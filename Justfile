@@ -29,7 +29,7 @@ fmt-fix:
 
 # Type checking
 typecheck *ARGS:
-    uv run ty {{ ARGS }}
+    uv run ty check {{ ARGS }}
 
 # Build docs
 docs:

@@ -5,7 +5,8 @@ All query functions accept both Element and Fragment containers, allowing you to
 search within any tdom structure returned by html().
 """
 
-from typing import List, Literal, Optional, Union, Pattern
+import re
+from typing import Literal
 
 from tdom import Element, Fragment, Node
 
@@ -19,7 +20,7 @@ from aria_testing.utils import (
 
 # Type alias for containers that can be searched
 # Accepts both Element, Fragment, and Node as valid containers
-Container = Union[Element, Fragment, Node]
+Container = Element | Fragment | Node
 
 # ARIA Role Type Definitions
 # Based on WAI-ARIA 1.1 specification and HTML living standard
@@ -111,14 +112,14 @@ WindowRole = Literal[
 ]
 
 # Combined type for all ARIA roles
-AriaRole = Union[
-    LandmarkRole,
-    DocumentStructureRole,
-    WidgetRole,
-    CompositeWidgetRole,
-    LiveRegionRole,
-    WindowRole,
-]
+AriaRole = (
+    LandmarkRole
+    | DocumentStructureRole
+    | WidgetRole
+    | CompositeWidgetRole
+    | LiveRegionRole
+    | WindowRole
+)
 
 # Most commonly used roles (subset for convenience)
 CommonRole = Literal[
@@ -150,7 +151,7 @@ CommonRole = Literal[
 # Note: Using keyword-only arguments with * separator instead of options dictionary
 
 
-def get_role_for_element(node: Node) -> Optional[str]:
+def get_role_for_element(node: Node) -> str | None:
     """Get the ARIA role for a node (only Elements can have roles)."""
     # Only Elements can have ARIA roles
     if not isinstance(node, Element):
@@ -213,9 +214,9 @@ def query_all_by_role(
     container: Container,
     role: AriaRole,
     *,
-    level: Optional[int] = None,
-    name: Optional[Union[str, Pattern[str]]] = None,
-) -> List[Element]:
+    level: int | None = None,
+    name: str | re.Pattern[str] | None = None,
+) -> list[Element]:
     """Find all elements with the specified role.
 
     Args:
@@ -257,7 +258,7 @@ def query_all_by_role(
         # Check accessible name
         if name is not None:
             element_name = get_accessible_name(element, element_role)
-            if isinstance(name, Pattern):
+            if isinstance(name, re.Pattern):
                 # Regex pattern matching
                 if not name.search(element_name):
                     continue
@@ -275,8 +276,8 @@ def get_by_role(
     container: Container,
     role: AriaRole,
     *,
-    level: Optional[int] = None,
-    name: Optional[Union[str, Pattern[str]]] = None,
+    level: int | None = None,
+    name: str | re.Pattern[str] | None = None,
 ) -> Element:
     """Find a single element with the specified role.
 
@@ -307,9 +308,9 @@ def query_by_role(
     container: Container,
     role: AriaRole,
     *,
-    level: Optional[int] = None,
-    name: Optional[Union[str, Pattern[str]]] = None,
-) -> Optional[Element]:
+    level: int | None = None,
+    name: str | re.Pattern[str] | None = None,
+) -> Element | None:
     """Find a single element with the specified role, return None if not found.
 
     Args:
@@ -329,9 +330,9 @@ def get_all_by_role(
     container: Container,
     role: AriaRole,
     *,
-    level: Optional[int] = None,
-    name: Optional[Union[str, Pattern[str]]] = None,
-) -> List[Element]:
+    level: int | None = None,
+    name: str | re.Pattern[str] | None = None,
+) -> list[Element]:
     """Find all elements with the specified role, raise error if none found.
 
     Args:
@@ -352,7 +353,7 @@ def get_all_by_role(
     return elements
 
 
-def query_all_by_text(container: Container, text: str) -> List[Element]:
+def query_all_by_text(container: Container, text: str) -> list[Element]:
     """Find all elements containing the specified text."""
     all_elements = get_all_elements(container)
     # Skip container itself if it's an element
@@ -381,13 +382,13 @@ def get_by_text(container: Container, text: str) -> Element:
     return elements[0]
 
 
-def query_by_text(container: Container, text: str) -> Optional[Element]:
+def query_by_text(container: Container, text: str) -> Element | None:
     """Find a single element containing the specified text, return None if not found."""
     elements = query_all_by_text(container, text)
     return elements[0] if elements else None
 
 
-def get_all_by_text(container: Container, text: str) -> List[Element]:
+def get_all_by_text(container: Container, text: str) -> list[Element]:
     """Find all elements containing the specified text, raise error if none found."""
     elements = query_all_by_text(container, text)
     if not elements:
@@ -398,7 +399,7 @@ def get_all_by_text(container: Container, text: str) -> List[Element]:
 # Test ID-based queries
 def query_all_by_test_id(
     container: Container, test_id: str, *, attribute: str = "data-testid"
-) -> List[Element]:
+) -> list[Element]:
     """
     Find all elements with the specified test ID.
 
@@ -415,7 +416,7 @@ def query_all_by_test_id(
 
 def query_by_test_id(
     container: Container, test_id: str, *, attribute: str = "data-testid"
-) -> Optional[Element]:
+) -> Element | None:
     """
     Find a single element with the specified test ID.
 
@@ -468,7 +469,7 @@ def get_by_test_id(
 
 def get_all_by_test_id(
     container: Container, test_id: str, *, attribute: str = "data-testid"
-) -> List[Element]:
+) -> list[Element]:
     """
     Find all elements with the specified test ID.
     Throws an error if no elements are found.
@@ -498,7 +499,7 @@ def get_all_by_test_id(
 # ID-based queries
 
 
-def query_by_id(container: Container, element_id: str) -> Optional[Element]:
+def query_by_id(container: Container, element_id: str) -> Element | None:
     """
     Find a single element with the specified HTML id attribute.
 
@@ -548,24 +549,21 @@ def get_by_id(container: Container, element_id: str) -> Element:
 # Class-based queries
 
 
-def _elements_with_class(container: Container, class_name: str) -> List[Element]:
+def _elements_with_class(container: Container, class_name: str) -> list[Element]:
     """Return all elements whose class attribute contains class_name as a token.
 
     HTML class attributes are a space-separated list of tokens. This matches
     by token equality, not substring.
     """
-    matches: List[Element] = []
-    for el in get_all_elements(container):
-        cls = el.attrs.get("class")
-        if isinstance(cls, str):
-            # Split on ASCII whitespace per HTML spec
-            tokens = [t for t in cls.split() if t]
-            if class_name in tokens:
-                matches.append(el)
-    return matches
+    return [
+        el
+        for el in get_all_elements(container)
+        if isinstance(cls := el.attrs.get("class"), str)
+        and class_name in [t for t in cls.split() if t]
+    ]
 
 
-def query_all_by_class(container: Container, class_name: str) -> List[Element]:
+def query_all_by_class(container: Container, class_name: str) -> list[Element]:
     """Find all elements that have the given CSS class token.
 
     Returns a (possibly empty) list of matches.
@@ -573,7 +571,7 @@ def query_all_by_class(container: Container, class_name: str) -> List[Element]:
     return _elements_with_class(container, class_name)
 
 
-def get_all_by_class(container: Container, class_name: str) -> List[Element]:
+def get_all_by_class(container: Container, class_name: str) -> list[Element]:
     """Find all elements that have the given CSS class token.
 
     Raises ElementNotFoundError if none match.
@@ -587,7 +585,7 @@ def get_all_by_class(container: Container, class_name: str) -> List[Element]:
     return elements
 
 
-def query_by_class(container: Container, class_name: str) -> Optional[Element]:
+def query_by_class(container: Container, class_name: str) -> Element | None:
     """Find a single element that has the given CSS class token.
 
     Returns the element if exactly one match exists, None if none, and raises
@@ -623,7 +621,7 @@ def get_by_class(container: Container, class_name: str) -> Element:
 
 
 # Label text-based queries
-def query_all_by_label_text(container: Container, text: str) -> List[Element]:
+def query_all_by_label_text(container: Container, text: str) -> list[Element]:
     """Find all elements with the specified label text.
 
     This function looks for elements that have:
@@ -693,15 +691,10 @@ def query_all_by_label_text(container: Container, text: str) -> List[Element]:
                             results.append(element)
                             break
 
-    # Remove duplicates while preserving order
-    seen = set()
-    unique_results = []
-    for element in results:
-        if id(element) not in seen:
-            seen.add(id(element))
-            unique_results.append(element)
-
-    return unique_results
+    # Remove duplicates while preserving order using dict
+    # Dict maintains insertion order since Python 3.7+
+    # Use id() as key since Element instances need identity-based uniqueness
+    return list({id(el): el for el in results}.values())
 
 
 def get_by_label_text(container: Container, text: str) -> Element:
@@ -716,13 +709,13 @@ def get_by_label_text(container: Container, text: str) -> Element:
     return elements[0]
 
 
-def query_by_label_text(container: Container, text: str) -> Optional[Element]:
+def query_by_label_text(container: Container, text: str) -> Element | None:
     """Find a single element with the specified label text, return None if not found."""
     elements = query_all_by_label_text(container, text)
     return elements[0] if elements else None
 
 
-def get_all_by_label_text(container: Container, text: str) -> List[Element]:
+def get_all_by_label_text(container: Container, text: str) -> list[Element]:
     """Find all elements with the specified label text, raise error if none found."""
     elements = query_all_by_label_text(container, text)
     if not elements:
@@ -734,8 +727,8 @@ def get_all_by_label_text(container: Container, text: str) -> List[Element]:
 
 
 def query_all_by_tag_name(
-    container: Container, tag: str, *, attrs: Optional[dict[str, str]] = None
-) -> List[Element]:
+    container: Container, tag: str, *, attrs: dict[str, str] | None = None
+) -> list[Element]:
     """Find all elements with the specified tag name.
 
     Args:
@@ -789,8 +782,8 @@ def query_all_by_tag_name(
 
 
 def query_by_tag_name(
-    container: Container, tag: str, *, attrs: Optional[dict[str, str]] = None
-) -> Optional[Element]:
+    container: Container, tag: str, *, attrs: dict[str, str] | None = None
+) -> Element | None:
     """Find a single element with the specified tag name, return None if not found.
 
     Args:
@@ -806,7 +799,7 @@ def query_by_tag_name(
 
 
 def get_by_tag_name(
-    container: Container, tag: str, *, attrs: Optional[dict[str, str]] = None
+    container: Container, tag: str, *, attrs: dict[str, str] | None = None
 ) -> Element:
     """Find a single element with the specified tag name.
 
@@ -836,8 +829,8 @@ def get_by_tag_name(
 
 
 def get_all_by_tag_name(
-    container: Container, tag: str, *, attrs: Optional[dict[str, str]] = None
-) -> List[Element]:
+    container: Container, tag: str, *, attrs: dict[str, str] | None = None
+) -> list[Element]:
     """Find all elements with the specified tag name, raise error if none found.
 
     Args:

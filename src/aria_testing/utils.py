@@ -3,7 +3,7 @@ Utility functions for text extraction and normalization from tdom nodes.
 """
 
 import re
-from typing import Union, Optional, Pattern
+from typing import Callable
 
 from tdom import Node, Element, Text, Fragment
 
@@ -18,15 +18,14 @@ def get_text_content(node: Node) -> str:
     Returns:
         The concatenated text content of the node and all its descendants
     """
-    if isinstance(node, Text):
-        return node.text
-    elif isinstance(node, Element):
-        return "".join(get_text_content(child) for child in node.children)
-    elif isinstance(node, Fragment):
-        return "".join(get_text_content(child) for child in node.children)
-    else:
-        # For other node types (Comment, DocumentType), return empty string
-        return ""
+    match node:
+        case Text():
+            return node.text
+        case Element() | Fragment():
+            return "".join(get_text_content(child) for child in node.children)
+        case _:
+            # For other node types (Comment, DocumentType), return empty string
+            return ""
 
 
 def normalize_text(
@@ -55,7 +54,7 @@ def normalize_text(
 
 def matches_text(
     element_text: str,
-    matcher: Union[str, Pattern[str]],
+    matcher: str | re.Pattern[str],
     *,
     exact: bool = True,
     normalize: bool = True,
@@ -75,10 +74,8 @@ def matches_text(
     if normalize:
         element_text = normalize_text(element_text)
 
-    if hasattr(matcher, "search") and callable(
-        getattr(matcher, "search")
-    ):  # It's a regex pattern
-        return bool(getattr(matcher, "search")(element_text))
+    if isinstance(matcher, re.Pattern):
+        return bool(matcher.search(element_text))
     elif isinstance(matcher, str):
         if normalize:
             matcher = normalize_text(matcher)
@@ -91,8 +88,38 @@ def matches_text(
         return False
 
 
+def _traverse_elements(
+    container: Node, predicate: Callable[[Element], bool] | None = None
+) -> list[Element]:
+    """
+    Generic tree traversal that collects elements matching a predicate.
+
+    Args:
+        container: The container node to search within
+        predicate: Optional function to test each element. If None, collects all elements.
+
+    Returns:
+        List of matching elements
+    """
+    results: list[Element] = []
+
+    def traverse(node: Node) -> None:
+        match node:
+            case Element():
+                if predicate is None or predicate(node):
+                    results.append(node)
+                for child in node.children:
+                    traverse(child)
+            case Fragment():
+                for child in node.children:
+                    traverse(child)
+
+    traverse(container)
+    return results
+
+
 def find_elements_by_attribute(
-    container: Node, attribute: str, value: Optional[str] = None
+    container: Node, attribute: str, value: str | None = None
 ) -> list[Element]:
     """
     Find all elements within container that have the specified attribute.
@@ -105,22 +132,13 @@ def find_elements_by_attribute(
     Returns:
         List of matching elements
     """
-    results: list[Element] = []
 
-    def traverse(node: Node) -> None:
-        if isinstance(node, Element):
-            if attribute in node.attrs:
-                if value is None or node.attrs[attribute] == value:
-                    results.append(node)
-            # Continue traversing children
-            for child in node.children:
-                traverse(child)
-        elif isinstance(node, Fragment):
-            for child in node.children:
-                traverse(child)
+    def predicate(element: Element) -> bool:
+        if attribute not in element.attrs:
+            return False
+        return value is None or element.attrs[attribute] == value
 
-    traverse(container)
-    return results
+    return _traverse_elements(container, predicate)
 
 
 def find_elements_by_tag(container: Node, tag: str) -> list[Element]:
@@ -134,21 +152,8 @@ def find_elements_by_tag(container: Node, tag: str) -> list[Element]:
     Returns:
         List of matching elements
     """
-    results: list[Element] = []
-
-    def traverse(node: Node) -> None:
-        if isinstance(node, Element):
-            if node.tag.lower() == tag.lower():
-                results.append(node)
-            # Continue traversing children
-            for child in node.children:
-                traverse(child)
-        elif isinstance(node, Fragment):
-            for child in node.children:
-                traverse(child)
-
-    traverse(container)
-    return results
+    tag_lower = tag.lower()
+    return _traverse_elements(container, lambda el: el.tag.lower() == tag_lower)
 
 
 def get_all_elements(container: Node) -> list[Element]:
@@ -161,23 +166,10 @@ def get_all_elements(container: Node) -> list[Element]:
     Returns:
         List of all elements in the container
     """
-    results: list[Element] = []
-
-    def traverse(node: Node) -> None:
-        if isinstance(node, Element):
-            results.append(node)
-            # Continue traversing children
-            for child in node.children:
-                traverse(child)
-        elif isinstance(node, Fragment):
-            for child in node.children:
-                traverse(child)
-
-    traverse(container)
-    return results
+    return _traverse_elements(container)
 
 
-def get_accessible_name(element: Element, role: Optional[str] = None) -> str:
+def get_accessible_name(element: Element, role: str | None = None) -> str:
     """
     Get the accessible name for an element based on its role and attributes.
 
@@ -201,13 +193,9 @@ def get_accessible_name(element: Element, role: Optional[str] = None) -> str:
             return aria_label.strip()
 
     # Check aria-labelledby
-    if "aria-labelledby" in element.attrs:
-        labelledby_attr = element.attrs["aria-labelledby"]
-        if labelledby_attr is not None:
-            labelledby_attr.split()
-            # In a real implementation, we would traverse the DOM to find elements with these IDs
-            # For now, we'll skip this complex case and fall through to other methods
-            pass
+    # Note: Full implementation would traverse the DOM to find elements by ID
+    # and concatenate their text content. Skipped for now as it requires
+    # container context which this function doesn't have.
 
     # Role-specific naming
     if role == "link":

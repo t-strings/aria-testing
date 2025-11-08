@@ -2,19 +2,15 @@
 Custom exceptions for the aria_testing library.
 """
 
-from typing import Optional
-
 
 class AriaTestingLibraryError(Exception):
     """Base exception for all testing library errors."""
-
-    pass
 
 
 class ElementNotFoundError(AriaTestingLibraryError):
     """Raised when a get_by_* query fails to find any matching elements."""
 
-    def __init__(self, message: str, suggestion: Optional[str] = None):
+    def __init__(self, message: str, suggestion: str | None = None):
         self.suggestion = suggestion
         full_message = message
         if suggestion:
