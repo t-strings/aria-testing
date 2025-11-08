@@ -19,17 +19,17 @@ install:
 test *ARGS:
     uv run pytest {{ ARGS }}
 
-# Lint (no changes)
-lint:
+# Format (no changes)
+fmt:
     uv run ruff check .
 
-# Lint and auto-fix
-fix:
+# Format and auto-fix
+fmt-fix:
     uv run ruff check --fix .
 
 # Type checking
 typecheck *ARGS:
-    uv run pyright {{ ARGS }}
+    uv run ty {{ ARGS }}
 
 # Build docs
 docs:
@@ -47,6 +47,6 @@ clean:
 # Run the same checks as CI
 ci:
     just install
-    just lint
+    just fmt
     just typecheck
     just test

@@ -8,7 +8,7 @@ This configuration uses the Furo theme and MyST-Parser to support Markdown
 import os
 import sys
 from datetime import datetime
-from importlib.metadata import PackageNotFoundError, version
+from importlib.metadata import version
 
 # -- Project information -----------------------------------------------------
 

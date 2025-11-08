@@ -23,11 +23,11 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pyrefly>=0.40.1",
     "pytest>=8.4.2",
     "ruff>=0.13.2",
     "sphinx>=8.0.0",
     "furo>=2024.8.6",
     "myst-parser>=4.0.0",
     "sphinx-autobuild>=2024.9.3",
+    "ty>=0.0.1a25",
 ]
