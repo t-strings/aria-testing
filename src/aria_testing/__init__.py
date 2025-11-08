@@ -1,0 +1,92 @@
+"""
+aria_testing: A Python DOM Testing Library for tdom
+
+This library provides accessibility-focused query functions that work with tdom's
+Node, Element, Text, and Fragment types. It follows DOM Testing Library's philosophy:
+"The more your tests resemble the way your software is used, the more confidence they can give you."
+"""
+
+from .queries import (
+    get_by_text,
+    query_by_text,
+    get_all_by_text,
+    query_all_by_text,
+    get_by_test_id,
+    query_by_test_id,
+    get_all_by_test_id,
+    query_all_by_test_id,
+    get_by_role,
+    query_by_role,
+    get_all_by_role,
+    query_all_by_role,
+    get_by_label_text,
+    query_by_label_text,
+    get_all_by_label_text,
+    query_all_by_label_text,
+    get_by_tag_name,
+    query_by_tag_name,
+    get_all_by_tag_name,
+    query_all_by_tag_name,
+    get_by_id,
+    query_by_id,
+    get_by_class,
+    query_by_class,
+    get_all_by_class,
+    query_all_by_class,
+    # Type exports
+    AriaRole,
+    LandmarkRole,
+    DocumentStructureRole,
+    WidgetRole,
+    CompositeWidgetRole,
+    LiveRegionRole,
+    WindowRole,
+    CommonRole,
+    Container,
+)
+from .utils import get_text_content, normalize_text
+from .errors import AriaTestingLibraryError, ElementNotFoundError, MultipleElementsError
+
+__all__ = [
+    "get_by_text",
+    "query_by_text",
+    "get_all_by_text",
+    "query_all_by_text",
+    "get_by_test_id",
+    "query_by_test_id",
+    "get_all_by_test_id",
+    "query_all_by_test_id",
+    "get_by_role",
+    "query_by_role",
+    "get_all_by_role",
+    "query_all_by_role",
+    "get_by_label_text",
+    "query_by_label_text",
+    "get_all_by_label_text",
+    "query_all_by_label_text",
+    "get_by_tag_name",
+    "query_by_tag_name",
+    "get_all_by_tag_name",
+    "query_all_by_tag_name",
+    "get_by_id",
+    "query_by_id",
+    "get_by_class",
+    "query_by_class",
+    "get_all_by_class",
+    "query_all_by_class",
+    "get_text_content",
+    "normalize_text",
+    "AriaTestingLibraryError",
+    "ElementNotFoundError",
+    "MultipleElementsError",
+    # Type exports
+    "AriaRole",
+    "LandmarkRole",
+    "DocumentStructureRole",
+    "WidgetRole",
+    "CompositeWidgetRole",
+    "LiveRegionRole",
+    "WindowRole",
+    "CommonRole",
+    "Container",
+]
