@@ -8,7 +8,6 @@ This configuration uses the Furo theme and MyST-Parser to support Markdown
 import os
 import sys
 from datetime import datetime
-from importlib.metadata import version
 
 # -- Project information -----------------------------------------------------
 
@@ -16,8 +15,7 @@ project = "aria-testing"
 author = "pauleveritt"
 copyright = f"{datetime.now().year}, {author}"
 
-release = version(project)
-
+version = "0.0.1"
 # -- General configuration ---------------------------------------------------
 
 extensions = [
@@ -33,7 +31,6 @@ source_suffix = {
 myst_enable_extensions = [
     "colon_fence",
     "deflist",
-    "linkify",
 ]
 
 templates_path = ["_templates"]
