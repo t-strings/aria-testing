@@ -3,9 +3,9 @@ Tests for aria_testing.errors module.
 """
 
 from aria_testing.errors import (
+    AriaTestingLibraryError,
     ElementNotFoundError,
     MultipleElementsError,
-    AriaTestingLibraryError,
 )
 
 
