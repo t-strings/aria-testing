@@ -150,6 +150,42 @@ CommonRole = Literal[
 
 # Note: Using keyword-only arguments with * separator instead of options dictionary
 
+# Cached role mappings for performance
+_ROLE_MAP = {
+    "button": "button",
+    "summary": "button",  # <summary> has implicit role of button
+    "nav": "navigation",
+    "main": "main",
+    "header": "banner",
+    "footer": "contentinfo",
+    "aside": "complementary",
+    "h1": "heading",
+    "h2": "heading",
+    "h3": "heading",
+    "h4": "heading",
+    "h5": "heading",
+    "h6": "heading",
+    "a": "link",
+    "ul": "list",
+    "ol": "list",
+    "li": "listitem",
+    "form": "form",
+    "img": "img",
+    "textarea": "textbox",
+}
+
+_INPUT_TYPE_MAP = {
+    "text": "textbox",
+    "email": "textbox",
+    "password": "textbox",
+    "number": "spinbutton",
+    "checkbox": "checkbox",
+    "radio": "radio",
+    "button": "button",
+    "submit": "button",
+    "reset": "button",
+}
+
 
 def get_role_for_element(node: Node) -> str | None:
     """Get the ARIA role for a node (only Elements can have roles)."""
@@ -165,47 +201,14 @@ def get_role_for_element(node: Node) -> str | None:
 
     # Check implicit roles
     tag = element.tag.lower()
-    role_map = {
-        "button": "button",
-        "summary": "button",  # <summary> has implicit role of button
-        "nav": "navigation",
-        "main": "main",
-        "header": "banner",
-        "footer": "contentinfo",
-        "aside": "complementary",
-        "h1": "heading",
-        "h2": "heading",
-        "h3": "heading",
-        "h4": "heading",
-        "h5": "heading",
-        "h6": "heading",
-        "a": "link",
-        "ul": "list",
-        "ol": "list",
-        "li": "listitem",
-        "form": "form",
-        "img": "img",
-        "textarea": "textbox",
-    }
 
-    if tag in role_map:
-        return role_map[tag]
+    if tag in _ROLE_MAP:
+        return _ROLE_MAP[tag]
 
     # Special handling for input elements
     if tag == "input":
         input_type = (element.attrs.get("type") or "text").lower()
-        type_map = {
-            "text": "textbox",
-            "email": "textbox",
-            "password": "textbox",
-            "number": "spinbutton",
-            "checkbox": "checkbox",
-            "radio": "radio",
-            "button": "button",
-            "submit": "button",
-            "reset": "button",
-        }
-        return type_map.get(input_type, "textbox")
+        return _INPUT_TYPE_MAP.get(input_type, "textbox")
 
     return None
 
@@ -228,12 +231,9 @@ def query_all_by_role(
     Returns:
         List of elements matching the criteria
     """
-    all_elements = get_all_elements(container)
-    # Skip container itself if it's an element
-    if isinstance(container, Element) and all_elements and all_elements[0] is container:
-        elements = all_elements[1:]
-    else:
-        elements = all_elements
+    # Skip container element itself if container is an Element
+    skip_container = isinstance(container, Element)
+    elements = get_all_elements(container, skip_root=skip_container)
 
     results = []
     for element in elements:
@@ -355,12 +355,9 @@ def get_all_by_role(
 
 def query_all_by_text(container: Container, text: str) -> list[Element]:
     """Find all elements containing the specified text."""
-    all_elements = get_all_elements(container)
-    # Skip container itself if it's an element
-    if isinstance(container, Element) and all_elements and all_elements[0] is container:
-        elements = all_elements[1:]
-    else:
-        elements = all_elements
+    # Skip container element itself if container is an Element
+    skip_container = isinstance(container, Element)
+    elements = get_all_elements(container, skip_root=skip_container)
 
     results = []
     for element in elements:
@@ -554,13 +551,20 @@ def _elements_with_class(container: Container, class_name: str) -> list[Element]
 
     HTML class attributes are a space-separated list of tokens. This matches
     by token equality, not substring.
+
+    Uses set for O(1) lookup when checking class membership.
     """
-    return [
-        el
-        for el in get_all_elements(container)
-        if isinstance(cls := el.attrs.get("class"), str)
-        and class_name in [t for t in cls.split() if t]
-    ]
+    # Skip container element itself if container is an Element
+    skip_container = isinstance(container, Element)
+    results = []
+    for el in get_all_elements(container, skip_root=skip_container):
+        cls = el.attrs.get("class")
+        if isinstance(cls, str):
+            # Convert to set for O(1) lookup instead of O(n) list membership
+            class_tokens = set(cls.split())
+            if class_name in class_tokens:
+                results.append(el)
+    return results
 
 
 def query_all_by_class(container: Container, class_name: str) -> list[Element]:
@@ -620,23 +624,31 @@ def get_by_class(container: Container, class_name: str) -> Element:
     return elements[0]
 
 
-# Label text-based queries
-def query_all_by_label_text(container: Container, text: str) -> list[Element]:
-    """Find all elements with the specified label text.
+# Helper function for finding form controls (moved to module level for performance)
+def _find_form_controls(element: Element) -> list[Element]:
+    """Find all form control descendants of an element."""
+    results = []
 
-    This function looks for elements that have:
-    1. An aria-label attribute matching the text
-    2. A <label> element that contains the text and is associated with the element via:
-       - The for attribute pointing to the element's id
-       - Nesting the element inside the label
-    3. An aria-labelledby attribute pointing to an element with the text
-    """
-    all_elements = get_all_elements(container)
-    # Skip container itself if it's an element
-    if isinstance(container, Element) and all_elements and all_elements[0] is container:
-        elements = all_elements[1:]
-    else:
-        elements = all_elements
+    def traverse(node):
+        if isinstance(node, Element):
+            if node.tag.lower() in {"input", "textarea", "select", "button"}:
+                results.append(node)
+            if hasattr(node, "children"):
+                for child in node.children:
+                    traverse(child)
+
+    traverse(element)
+    return results
+
+
+# Label text-based queries
+def _query_all_by_label_text_impl(
+    container: Container, text: str, find_first: bool = False
+) -> list[Element]:
+    """Internal implementation with optional early exit for single-element queries."""
+    # Skip container element itself if container is an Element
+    skip_container = isinstance(container, Element)
+    elements = get_all_elements(container, skip_root=skip_container)
 
     results = []
 
@@ -645,6 +657,8 @@ def query_all_by_label_text(container: Container, text: str) -> list[Element]:
         aria_label = element.attrs.get("aria-label")
         if aria_label and text in aria_label:
             results.append(element)
+            if find_first:
+                return results
 
     # Then find elements with associated labels
     # Get all label elements in the container
@@ -661,20 +675,14 @@ def query_all_by_label_text(container: Container, text: str) -> list[Element]:
                 for element in elements:
                     if element.attrs.get("id") == label_for:
                         results.append(element)
+                        if find_first:
+                            return results
 
             # Method 2: Check for nested form controls
-            nested_controls = []
-
-            def find_nested_controls(node):
-                if isinstance(node, Element):
-                    if node.tag.lower() in ["input", "textarea", "select", "button"]:
-                        nested_controls.append(node)
-                    if hasattr(node, "children"):
-                        for child in node.children:
-                            find_nested_controls(child)
-
-            find_nested_controls(label)
+            nested_controls = _find_form_controls(label)
             results.extend(nested_controls)
+            if find_first and nested_controls:
+                return results
 
     # Finally, check for aria-labelledby
     for element in elements:
@@ -689,12 +697,27 @@ def query_all_by_label_text(container: Container, text: str) -> list[Element]:
                         label_text = get_text_content(potential_label)
                         if text in label_text:
                             results.append(element)
+                            if find_first:
+                                return results
                             break
 
     # Remove duplicates while preserving order using dict
     # Dict maintains insertion order since Python 3.7+
     # Use id() as key since Element instances need identity-based uniqueness
     return list({id(el): el for el in results}.values())
+
+
+def query_all_by_label_text(container: Container, text: str) -> list[Element]:
+    """Find all elements with the specified label text.
+
+    This function looks for elements that have:
+    1. An aria-label attribute matching the text
+    2. A <label> element that contains the text and is associated with the element via:
+       - The for attribute pointing to the element's id
+       - Nesting the element inside the label
+    3. An aria-labelledby attribute pointing to an element with the text
+    """
+    return _query_all_by_label_text_impl(container, text, find_first=False)
 
 
 def get_by_label_text(container: Container, text: str) -> Element:
@@ -711,7 +734,7 @@ def get_by_label_text(container: Container, text: str) -> Element:
 
 def query_by_label_text(container: Container, text: str) -> Element | None:
     """Find a single element with the specified label text, return None if not found."""
-    elements = query_all_by_label_text(container, text)
+    elements = _query_all_by_label_text_impl(container, text, find_first=True)
     return elements[0] if elements else None
 
 

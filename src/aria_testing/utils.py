@@ -89,7 +89,10 @@ def matches_text(
 
 
 def _traverse_elements(
-    container: Node, predicate: Callable[[Element], bool] | None = None
+    container: Node,
+    predicate: Callable[[Element], bool] | None = None,
+    *,
+    skip_root: bool = False,
 ) -> list[Element]:
     """
     Generic tree traversal that collects elements matching a predicate.
@@ -97,22 +100,27 @@ def _traverse_elements(
     Args:
         container: The container node to search within
         predicate: Optional function to test each element. If None, collects all elements.
+        skip_root: If True and container is an Element, exclude the container itself
 
     Returns:
         List of matching elements
     """
     results: list[Element] = []
 
-    def traverse(node: Node) -> None:
+    def traverse(node: Node, is_root: bool = True) -> None:
         match node:
             case Element():
-                if predicate is None or predicate(node):
-                    results.append(node)
+                # Add element if not skipping root or not at root
+                if not (skip_root and is_root):
+                    if predicate is None or predicate(node):
+                        results.append(node)
+                # Always traverse children
                 for child in node.children:
-                    traverse(child)
+                    traverse(child, False)
             case Fragment():
+                # Fragments are never considered root for skipping
                 for child in node.children:
-                    traverse(child)
+                    traverse(child, False)
 
     traverse(container)
     return results
@@ -156,17 +164,18 @@ def find_elements_by_tag(container: Node, tag: str) -> list[Element]:
     return _traverse_elements(container, lambda el: el.tag.lower() == tag_lower)
 
 
-def get_all_elements(container: Node) -> list[Element]:
+def get_all_elements(container: Node, *, skip_root: bool = False) -> list[Element]:
     """
     Get all Element nodes within the container.
 
     Args:
         container: The container node to search within
+        skip_root: If True and container is an Element, exclude the container itself
 
     Returns:
         List of all elements in the container
     """
-    return _traverse_elements(container)
+    return _traverse_elements(container, skip_root=skip_root)
 
 
 def get_accessible_name(element: Element, role: str | None = None) -> str:
