@@ -121,34 +121,12 @@ AriaRole = (
     | WindowRole
 )
 
-# Most commonly used roles (subset for convenience)
-CommonRole = Literal[
-    # Landmarks
-    "main",
-    "navigation",
-    "banner",
-    "contentinfo",
-    "complementary",
-    "form",
-    # Document structure
-    "heading",
-    "list",
-    "listitem",
-    "table",
-    "row",
-    "cell",
-    "img",
-    # Interactive elements
-    "button",
-    "link",
-    "textbox",
-    "checkbox",
-    "radio",
-    "combobox",
-]
-
-
 # Note: Using keyword-only arguments with * separator instead of options dictionary
+
+# Error message templates for consistency
+_NOT_FOUND_MSG = "Unable to find element with {query_type}: {value}"
+_NOT_FOUND_PLURAL_MSG = "Unable to find elements with {query_type}: {value}"
+_MULTIPLE_MSG = "Found multiple elements with {query_type}: {value}"
 
 # Cached role mappings for performance
 _ROLE_MAP = {
@@ -641,6 +619,61 @@ def _find_form_controls(element: Element) -> list[Element]:
     return results
 
 
+# Label text search strategies (extracted for clarity)
+def _find_by_aria_label(elements: list[Element], text: str) -> list[Element]:
+    """Find elements with aria-label containing the text."""
+    return [
+        element
+        for element in elements
+        if (aria_label := element.attrs.get("aria-label"))
+        and text in aria_label
+    ]
+
+
+def _find_by_label_for(
+    elements: list[Element], label_elements: list[Element], text: str
+) -> list[Element]:
+    """Find elements associated with <label> via 'for' attribute."""
+    results = []
+    for label in label_elements:
+        label_text = get_text_content(label)
+        if text in label_text:
+            label_for = label.attrs.get("for")
+            if label_for:
+                for element in elements:
+                    if element.attrs.get("id") == label_for:
+                        results.append(element)
+    return results
+
+
+def _find_by_nested_labels(label_elements: list[Element], text: str) -> list[Element]:
+    """Find form controls nested inside <label> elements containing the text."""
+    results = []
+    for label in label_elements:
+        label_text = get_text_content(label)
+        if text in label_text:
+            nested_controls = _find_form_controls(label)
+            results.extend(nested_controls)
+    return results
+
+
+def _find_by_aria_labelledby(elements: list[Element], text: str) -> list[Element]:
+    """Find elements with aria-labelledby referencing elements containing the text."""
+    results = []
+    for element in elements:
+        aria_labelledby = element.attrs.get("aria-labelledby")
+        if aria_labelledby:
+            label_ids = aria_labelledby.split()
+            for label_id in label_ids:
+                for potential_label in elements:
+                    if potential_label.attrs.get("id") == label_id:
+                        label_text = get_text_content(potential_label)
+                        if text in label_text:
+                            results.append(element)
+                            break
+    return results
+
+
 # Label text-based queries
 def _query_all_by_label_text_impl(
     container: Container, text: str, find_first: bool = False
@@ -652,54 +685,30 @@ def _query_all_by_label_text_impl(
 
     results = []
 
-    # First, find elements with aria-label attributes
-    for element in elements:
-        aria_label = element.attrs.get("aria-label")
-        if aria_label and text in aria_label:
-            results.append(element)
-            if find_first:
-                return results
+    # Strategy 1: Find by aria-label
+    aria_label_matches = _find_by_aria_label(elements, text)
+    results.extend(aria_label_matches)
+    if find_first and results:
+        return results
 
-    # Then find elements with associated labels
-    # Get all label elements in the container
+    # Get all label elements for remaining strategies
     label_elements = [el for el in elements if el.tag.lower() == "label"]
 
-    for label in label_elements:
-        label_text = get_text_content(label)
-        if text in label_text:
-            # Check if this label is associated with any elements
-            # Method 1: Check for 'for' attribute
-            label_for = label.attrs.get("for")
-            if label_for:
-                # Find the element with this id
-                for element in elements:
-                    if element.attrs.get("id") == label_for:
-                        results.append(element)
-                        if find_first:
-                            return results
+    # Strategy 2: Find by <label for="id">
+    label_for_matches = _find_by_label_for(elements, label_elements, text)
+    results.extend(label_for_matches)
+    if find_first and results:
+        return results
 
-            # Method 2: Check for nested form controls
-            nested_controls = _find_form_controls(label)
-            results.extend(nested_controls)
-            if find_first and nested_controls:
-                return results
+    # Strategy 3: Find by nested form controls in <label>
+    nested_matches = _find_by_nested_labels(label_elements, text)
+    results.extend(nested_matches)
+    if find_first and results:
+        return results
 
-    # Finally, check for aria-labelledby
-    for element in elements:
-        aria_labelledby = element.attrs.get("aria-labelledby")
-        if aria_labelledby:
-            # Split space-separated IDs
-            label_ids = aria_labelledby.split()
-            for label_id in label_ids:
-                # Find the element with this ID
-                for potential_label in elements:
-                    if potential_label.attrs.get("id") == label_id:
-                        label_text = get_text_content(potential_label)
-                        if text in label_text:
-                            results.append(element)
-                            if find_first:
-                                return results
-                            break
+    # Strategy 4: Find by aria-labelledby
+    labelledby_matches = _find_by_aria_labelledby(elements, text)
+    results.extend(labelledby_matches)
 
     # Remove duplicates while preserving order using dict
     # Dict maintains insertion order since Python 3.7+

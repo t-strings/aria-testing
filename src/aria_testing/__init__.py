@@ -41,7 +41,6 @@ from .queries import (
     CompositeWidgetRole,
     LiveRegionRole,
     WindowRole,
-    CommonRole,
     Container,
 )
 from .utils import get_text_content, normalize_text
@@ -87,6 +86,5 @@ __all__ = [
     "CompositeWidgetRole",
     "LiveRegionRole",
     "WindowRole",
-    "CommonRole",
     "Container",
 ]
