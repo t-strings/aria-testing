@@ -4,12 +4,14 @@ Accessibility-focused DOM testing library for tdom.
 
 ## Overview
 
-`aria-testing` is a Python DOM testing library that provides accessibility-focused query functions for tdom. It follows the DOM Testing Library philosophy: **"The more your tests resemble the way your software is used, the more confidence they can give you."**
+`aria-testing` is a Python DOM testing library that provides accessibility-focused query functions for tdom. It follows
+the DOM Testing Library philosophy: **"The more your tests resemble the way your software is used, the more confidence
+they can give you."**
 
 ## Installation
 
 ```bash
-uv add aria-testing
+uv add --dev aria-testing
 ```
 
 ## Quick Start

@@ -7,19 +7,29 @@ from tdom.processor import html
 
 from aria_testing.errors import ElementNotFoundError, MultipleElementsError
 from aria_testing.queries import (
+    get_all_by_class,
+    get_all_by_label_text,
     get_all_by_role,
     get_all_by_tag_name,
     get_all_by_test_id,
     get_all_by_text,
+    get_by_class,
+    get_by_id,
+    get_by_label_text,
     get_by_role,
     get_by_tag_name,
     get_by_test_id,
     get_by_text,
     get_role_for_element,
+    query_all_by_class,
+    query_all_by_label_text,
     query_all_by_role,
     query_all_by_tag_name,
     query_all_by_test_id,
     query_all_by_text,
+    query_by_class,
+    query_by_id,
+    query_by_label_text,
     query_by_role,
     query_by_tag_name,
     query_by_test_id,
@@ -1207,3 +1217,548 @@ def test_tag_name_in_class_multiple_classes():
 
     result = query_by_tag_name(container, "div", attrs={"in_class": "container"})
     assert result is not None
+
+
+# ===== Class Name Query Tests =====
+
+
+def test_query_by_class_finds_element_with_multiple_classes():
+    container = html(t"""<div>
+        <h1 class="title hero">Welcome</h1>
+        <p class="message lead">Hello</p>
+    </div>""")
+
+    el = get_by_class(container, "message")
+    assert el is not None
+    assert el.tag == "p"
+    _class = el.attrs.get("class", "")
+    assert _class is not None
+    assert "message" in _class
+
+
+def test_query_by_class_not_found_returns_none():
+    container = html(t"""<div>
+        <p class="a b">A</p>
+    </div>""")
+
+    assert query_by_class(container, "missing") is None
+
+
+def test_get_by_class_success():
+    container = html(t"""<div>
+        <button class="btn primary">Save</button>
+    </div>""")
+
+    el = get_by_class(container, "btn")
+    assert el.tag == "button"
+
+
+def test_get_by_class_duplicate_raises_multiple():
+    container = html(t"""<div>
+        <span class="dup">X</span>
+        <span class="dup">Y</span>
+    </div>""")
+
+    with pytest.raises(MultipleElementsError) as exc:
+        get_by_class(container, "dup")
+    assert isinstance(exc.value, MultipleElementsError)
+
+
+def test_class_token_matching_is_not_substring():
+    container = html(t"""<div>
+        <div class="button other"></div>
+        <div class="btn other"></div>
+    </div>""")
+
+    # Should not match substring 'btn' within 'button'
+    assert get_by_class(container, "btn").attrs.get("class") == "btn other"
+    assert get_by_class(container, "button").attrs.get("class") == "button other"
+
+
+def test_query_by_class_raises_on_multiple_matches():
+    container = html(t"""<div>
+        <div class="dup"></div>
+        <span class="dup"></span>
+    </div>""")
+
+    with pytest.raises(MultipleElementsError):
+        query_by_class(container, "dup")
+
+
+def test_get_all_by_class_success_and_order():
+    container = html(t"""<div>
+        <p class="a x">1</p>
+        <div class="b a">2</div>
+        <span class="a">3</span>
+    </div>""")
+
+    elements = get_all_by_class(container, "a")
+    assert [el.tag for el in elements] == ["p", "div", "span"]
+
+
+def test_get_all_by_class_not_found_raises():
+    container = html(t"""<div>
+        <p class="x">1</p>
+    </div>""")
+
+    with pytest.raises(Exception) as exc:
+        get_all_by_class(container, "missing")
+    # Being explicit about the type keeps intent clear
+    assert exc.type.__name__ == "ElementNotFoundError"
+
+
+def test_query_all_by_class_returns_empty_or_list():
+    container = html(t"""<div>
+        <p class="m n">1</p>
+        <div class="n">2</div>
+    </div>""")
+
+    assert query_all_by_class(container, "missing") == []
+    elements = query_all_by_class(container, "n")
+    assert len(elements) == 2
+    assert {el.tag for el in elements} == {"p", "div"}
+
+
+# ===== ID Query Tests =====
+
+
+def test_query_by_id_finds_element():
+    container = html(t"""<div>
+        <h1 id="title">Welcome</h1>
+        <p id="message">Hello</p>
+    </div>""")
+
+    el = query_by_id(container, "message")
+    assert el is not None
+    assert el.tag == "p"
+    assert el.attrs.get("id") == "message"
+
+
+def test_query_by_id_not_found_returns_none():
+    container = html(t"""<div>
+        <p id="a">A</p>
+    </div>""")
+
+    assert query_by_id(container, "missing") is None
+
+
+def test_get_by_id_success():
+    container = html(t"""<div>
+        <button id="save">Save</button>
+    </div>""")
+
+    el = get_by_id(container, "save")
+    assert el.tag == "button"
+
+
+def test_get_by_id_not_found_raises():
+    container = html(t"""<div>
+        <p id="a">A</p>
+    </div>""")
+
+    with pytest.raises(ElementNotFoundError):
+        get_by_id(container, "nope")
+
+
+def test_get_by_id_duplicate_ids_raise_multiple():
+    container = html(t"""<div>
+        <span id="dup">X</span>
+        <span id="dup">Y</span>
+    </div>""")
+
+    with pytest.raises(MultipleElementsError) as exc:
+        get_by_id(container, "dup")
+    assert isinstance(exc.value, MultipleElementsError)
+
+
+# ===== Implicit Role Tests =====
+
+
+def test_implicit_role_landmark_roles():
+    """Test landmark role type hints work."""
+    simple_document = html(t"""<div>
+        <nav>Navigation</nav>
+        <main>Main content</main>
+        <button>Click me</button>
+        <h1>Title</h1>
+    </div>""")
+
+    nav = get_by_role(simple_document, "navigation")
+    assert nav.tag == "nav"
+
+    main = get_by_role(simple_document, "main")
+    assert main.tag == "main"
+
+
+def test_implicit_role_widget_roles():
+    """Test widget role type hints work."""
+    simple_document = html(t"""<div>
+        <nav>Navigation</nav>
+        <main>Main content</main>
+        <button>Click me</button>
+        <h1>Title</h1>
+    </div>""")
+
+    button = get_by_role(simple_document, "button")
+    assert button.tag == "button"
+
+
+def test_implicit_role_document_structure_roles():
+    """Test document structure role type hints work."""
+    simple_document = html(t"""<div>
+        <nav>Navigation</nav>
+        <main>Main content</main>
+        <button>Click me</button>
+        <h1>Title</h1>
+    </div>""")
+
+    heading = get_by_role(simple_document, "heading")
+    assert heading.tag == "h1"
+
+
+def test_implicit_role_type_checking_example():
+    """Demonstrate type checking works for role parameters."""
+    doc = html(t"<div><nav>Navigation</nav></div>")
+
+    # These should all work with proper type hints
+    nav1 = get_by_role(doc, "navigation")  # Literal string
+
+    # Type annotations should prevent invalid roles at type-check time
+    assert nav1.tag == "nav"
+
+
+# ===== Label Text Query Tests =====
+
+
+def test_query_by_label_text_aria_label():
+    """Test finding element by aria-label attribute."""
+    document = html(t"""
+        <div>
+            <input type="text" aria-label="Enter your name" />
+            <button aria-label="Submit form">Submit</button>
+        </div>
+    """)
+
+    input_element = query_by_label_text(document, "Enter your name")
+    assert input_element is not None
+    assert input_element.tag == "input"
+    assert input_element.attrs.get("type") == "text"
+
+    button_element = query_by_label_text(document, "Submit form")
+    assert button_element is not None
+    assert button_element.tag == "button"
+
+
+def test_query_by_label_text_not_found():
+    """Test query_by_label_text returns None when not found."""
+    document = html(t'<div><input type="text" /></div>')
+
+    element = query_by_label_text(document, "Not found")
+    assert element is None
+
+
+def test_get_by_label_text_success():
+    """Test get_by_label_text finds element successfully."""
+    document = html(t'<div><input aria-label="Search" type="text" /></div>')
+
+    element = get_by_label_text(document, "Search")
+    assert element.tag == "input"
+    assert element.attrs.get("aria-label") == "Search"
+
+
+def test_get_by_label_text_not_found():
+    """Test get_by_label_text raises error when not found."""
+    document = html(t'<div><input type="text" /></div>')
+
+    with pytest.raises(ElementNotFoundError) as exc_info:
+        get_by_label_text(document, "Not found")
+    assert "Unable to find element with label text: Not found" in str(exc_info.value)
+
+
+def test_get_by_label_text_multiple_elements():
+    """Test get_by_label_text raises error when multiple elements found."""
+    document = html(t"""
+        <div>
+            <input aria-label="Name" type="text" />
+            <input aria-label="Full Name" type="text" />
+        </div>
+    """)
+
+    with pytest.raises(MultipleElementsError) as exc_info:
+        get_by_label_text(document, "Name")
+    assert "Found multiple elements with label text: Name" in str(exc_info.value)
+    assert isinstance(exc_info.value, MultipleElementsError)
+    assert exc_info.value.count == 2
+
+
+def test_query_all_by_label_text():
+    """Test query_all_by_label_text finds multiple elements."""
+    document = html(t"""
+        <div>
+            <input aria-label="User Name" type="text" />
+            <input aria-label="Display Name" type="text" />
+            <textarea aria-label="Name Description"></textarea>
+        </div>
+    """)
+
+    elements = query_all_by_label_text(document, "Name")
+    assert len(elements) == 3
+    assert elements[0].tag == "input"
+    assert elements[1].tag == "input"
+    assert elements[2].tag == "textarea"
+
+
+def test_get_all_by_label_text_success():
+    """Test get_all_by_label_text finds multiple elements."""
+    document = html(t"""
+        <div>
+            <button aria-label="Save Document">Save</button>
+            <button aria-label="Save As">Save As</button>
+        </div>
+    """)
+
+    elements = get_all_by_label_text(document, "Save")
+    assert len(elements) == 2
+    assert all(el.tag == "button" for el in elements)
+
+
+def test_get_all_by_label_text_not_found():
+    """Test get_all_by_label_text raises error when no elements found."""
+    document = html(t'<div><input type="text" /></div>')
+
+    with pytest.raises(ElementNotFoundError):
+        get_all_by_label_text(document, "Not found")
+
+
+def test_label_with_for_attribute():
+    """Test finding element by label with 'for' attribute."""
+    document = html(t"""
+        <div>
+            <label for="username">Username</label>
+            <input id="username" type="text" />
+        </div>
+    """)
+
+    element = get_by_label_text(document, "Username")
+    assert element.tag == "input"
+    assert element.attrs.get("id") == "username"
+    assert element.attrs.get("type") == "text"
+
+
+def test_nested_label():
+    """Test finding element nested inside label."""
+    document = html(t"""
+        <div>
+            <label>
+                Email Address
+                <input type="email" />
+            </label>
+        </div>
+    """)
+
+    element = get_by_label_text(document, "Email Address")
+    assert element.tag == "input"
+    assert element.attrs.get("type") == "email"
+
+
+def test_nested_label_with_multiple_controls():
+    """Test finding elements nested inside label with multiple controls."""
+    document = html(t"""
+        <div>
+            <label>
+                Contact Information
+                <input type="text" placeholder="Name" />
+                <input type="email" placeholder="Email" />
+                <textarea placeholder="Message"></textarea>
+            </label>
+        </div>
+    """)
+
+    elements = get_all_by_label_text(document, "Contact Information")
+    assert len(elements) == 3
+    assert elements[0].tag == "input" and elements[0].attrs.get("type") == "text"
+    assert elements[1].tag == "input" and elements[1].attrs.get("type") == "email"
+    assert elements[2].tag == "textarea"
+
+
+def test_aria_labelledby():
+    """Test finding element by aria-labelledby reference."""
+    document = html(t"""
+        <div>
+            <div id="name-label">Full Name</div>
+            <input type="text" aria-labelledby="name-label" />
+        </div>
+    """)
+
+    element = get_by_label_text(document, "Full Name")
+    assert element.tag == "input"
+    assert element.attrs.get("aria-labelledby") == "name-label"
+
+
+def test_aria_labelledby_multiple_references():
+    """Test finding element by aria-labelledby with multiple IDs."""
+    document = html(t"""
+        <div>
+            <div id="first-label">First</div>
+            <div id="last-label">Last Name</div>
+            <input type="text" aria-labelledby="first-label last-label" />
+        </div>
+    """)
+
+    # Should find by either label
+    element1 = get_by_label_text(document, "First")
+    assert element1.tag == "input"
+
+    element2 = get_by_label_text(document, "Last Name")
+    assert element2.tag == "input"
+
+    # Same element should be found
+    assert element1 is element2
+
+
+def test_multiple_labeling_methods():
+    """Test element with multiple labeling methods (should not duplicate)."""
+    document = html(t"""
+        <div>
+            <label for="multi-input">Multi Label</label>
+            <input id="multi-input" type="text" aria-label="Multi Label Input" />
+        </div>
+    """)
+
+    # Both "Multi Label" and "Multi Label Input" should find the same element
+    element1 = get_by_label_text(document, "Multi Label")
+    element2 = get_by_label_text(document, "Multi Label Input")
+
+    assert element1.tag == "input"
+    assert element2.tag == "input"
+    # They should be the same element for "Multi Label" case
+    # But different matches for different label texts
+
+
+def test_partial_text_matching_label():
+    """Test that label text matching works with partial text."""
+    document = html(t"""
+        <div>
+            <input aria-label="Enter your email address" type="email" />
+            <button aria-label="Submit the form">Submit</button>
+        </div>
+    """)
+
+    # Should find by partial match
+    email_input = get_by_label_text(document, "email")
+    assert email_input.tag == "input"
+    assert email_input.attrs.get("type") == "email"
+
+    submit_button = get_by_label_text(document, "Submit")
+    assert submit_button.tag == "button"
+
+
+def test_case_sensitive_matching_label():
+    """Test that label text matching is case sensitive."""
+    document = html(t'<div><input aria-label="Username" type="text" /></div>')
+
+    # Should find exact case
+    element = get_by_label_text(document, "Username")
+    assert element is not None
+
+    # Should not find different case
+    element = query_by_label_text(document, "username")
+    assert element is None
+
+    element = query_by_label_text(document, "USERNAME")
+    assert element is None
+
+
+def test_complex_form():
+    """Test finding elements in a complex form with mixed labeling approaches."""
+    document = html(t"""
+        <form>
+            <div>
+                <label for="name">Name</label>
+                <input id="name" type="text" />
+            </div>
+
+            <div>
+                <label>
+                    Email
+                    <input type="email" />
+                </label>
+            </div>
+
+            <div>
+                <div id="phone-label">Phone Number</div>
+                <input type="tel" aria-labelledby="phone-label" />
+            </div>
+
+            <div>
+                <input type="password" aria-label="Password" />
+            </div>
+
+            <button type="submit" aria-label="Submit Form">Submit</button>
+        </form>
+    """)
+
+    # Test each labeling method
+    name_input = get_by_label_text(document, "Name")
+    assert name_input.attrs.get("id") == "name"
+
+    email_input = get_by_label_text(document, "Email")
+    assert email_input.attrs.get("type") == "email"
+
+    phone_input = get_by_label_text(document, "Phone Number")
+    assert phone_input.attrs.get("type") == "tel"
+
+    password_input = get_by_label_text(document, "Password")
+    assert password_input.attrs.get("type") == "password"
+
+    submit_button = get_by_label_text(document, "Submit Form")
+    assert submit_button.tag == "button"
+    assert submit_button.attrs.get("type") == "submit"
+
+
+def test_label_without_associated_control():
+    """Test that labels without associated controls are ignored."""
+    document = html(t"""
+        <div>
+            <label>Standalone Label</label>
+            <div>Some content</div>
+        </div>
+    """)
+
+    # Should not find anything since label isn't associated with a form control
+    element = query_by_label_text(document, "Standalone Label")
+    assert element is None
+
+
+def test_non_form_elements_with_aria_label():
+    """Test that non-form elements with aria-label are found."""
+    document = html(t"""
+        <div>
+            <div aria-label="Important Notice">This is important</div>
+            <span aria-label="Help Text">?</span>
+            <article aria-label="Main Article">Article content</article>
+        </div>
+    """)
+
+    notice = get_by_label_text(document, "Important Notice")
+    assert notice.tag == "div"
+
+    help_text = get_by_label_text(document, "Help Text")
+    assert help_text.tag == "span"
+
+    article = get_by_label_text(document, "Main Article")
+    assert article.tag == "article"
+
+
+def test_fragment_as_container_label():
+    """Test using fragment as container."""
+    fragment = html(t"""
+        <input aria-label="First Field" type="text" />
+        <input aria-label="Second Field" type="text" />
+    """)
+
+    first_field = get_by_label_text(fragment, "First Field")
+    assert first_field.tag == "input"
+
+    elements = get_all_by_label_text(fragment, "Field")
+    assert len(elements) == 2

@@ -12,4 +12,6 @@
 
 ## Eventually
 
+- Analyze performance using the profiler
+
 ## Done

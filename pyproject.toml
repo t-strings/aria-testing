@@ -30,4 +30,5 @@ dev = [
     "myst-parser>=4.0.0",
     "sphinx-autobuild>=2024.9.3",
     "ty>=0.0.1a25",
+    "coverage>=7.11.2",
 ]
