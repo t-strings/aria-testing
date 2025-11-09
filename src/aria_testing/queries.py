@@ -6,7 +6,7 @@ search within any tdom structure returned by html().
 """
 
 import re
-from typing import Literal
+from typing import Callable, Literal
 
 from tdom import Element, Fragment, Node
 
@@ -22,104 +22,36 @@ from aria_testing.utils import (
 # Accepts both Element, Fragment, and Node as valid containers
 Container = Element | Fragment | Node
 
-# ARIA Role Type Definitions
+# ARIA Role Type Definition
 # Based on WAI-ARIA 1.1 specification and HTML living standard
-
-# Landmark Roles - Define page structure and navigation
-LandmarkRole = Literal[
-    "banner",  # <header> (when not descendant of article/section)
-    "complementary",  # <aside>
-    "contentinfo",  # <footer> (when not descendant of article/section)
-    "form",  # <form> (when has accessible name)
-    "main",  # <main>
-    "navigation",  # <nav>
-    "region",  # <section> (when has accessible name)
-    "search",  # No implicit HTML element
+# Simplified to a single flat Literal for easier maintenance
+AriaRole = Literal[
+    # Landmark roles - Define page structure and navigation
+    "banner", "complementary", "contentinfo", "form", "main", "navigation", "region", "search",
+    # Document structure roles - Organize content
+    "article", "document", "feed", "figure", "img", "list", "listitem", "math",
+    "none", "presentation", "table", "rowgroup", "row", "cell", "columnheader",
+    "rowheader", "gridcell", "heading", "separator",
+    # Widget roles - Interactive elements
+    "button", "checkbox", "link", "menuitem", "menuitemcheckbox", "menuitemradio",
+    "option", "progressbar", "radio", "scrollbar", "searchbox", "slider", "spinbutton",
+    "switch", "tab", "tabpanel", "textbox", "treeitem",
+    # Composite widget roles - Complex interactive elements
+    "combobox", "grid", "listbox", "menu", "menubar", "radiogroup", "tablist",
+    "tree", "treegrid",
+    # Live region roles - Dynamic content
+    "alert", "log", "marquee", "status", "timer",
+    # Window roles - Application-like interfaces
+    "alertdialog", "dialog",
 ]
 
-# Document Structure Roles - Organize content
-DocumentStructureRole = Literal[
-    "article",  # <article>
-    "document",  # <body>, <html>
-    "feed",  # No implicit HTML element
-    "figure",  # <figure>
-    "img",  # <img>
-    "list",  # <ul>, <ol>
-    "listitem",  # <li>
-    "math",  # <math>
-    "none",  # No implicit HTML element
-    "presentation",  # No implicit HTML element
-    "table",  # <table>
-    "rowgroup",  # <tbody>, <thead>, <tfoot>
-    "row",  # <tr>
-    "cell",  # <td>
-    "columnheader",  # <th scope="col">
-    "rowheader",  # <th scope="row">
-    "gridcell",  # No implicit HTML element
-    "heading",  # <h1>-<h6>
-    "separator",  # <hr>
-]
-
-# Widget Roles - Interactive elements
-WidgetRole = Literal[
-    "button",  # <button>, <input type="button|submit|reset">
-    "checkbox",  # <input type="checkbox">
-    "gridcell",  # No implicit HTML element
-    "link",  # <a href="...">
-    "menuitem",  # No implicit HTML element
-    "menuitemcheckbox",  # No implicit HTML element
-    "menuitemradio",  # No implicit HTML element
-    "option",  # <option>
-    "progressbar",  # <progress>
-    "radio",  # <input type="radio">
-    "scrollbar",  # No implicit HTML element
-    "searchbox",  # <input type="search">
-    "slider",  # <input type="range">
-    "spinbutton",  # <input type="number">
-    "switch",  # No implicit HTML element
-    "tab",  # No implicit HTML element
-    "tabpanel",  # No implicit HTML element
-    "textbox",  # <input type="text|email|password|tel|url">, <textarea>
-    "treeitem",  # No implicit HTML element
-]
-
-# Composite Widget Roles - Complex interactive elements
-CompositeWidgetRole = Literal[
-    "combobox",  # <select>, <input list="...">
-    "grid",  # No implicit HTML element
-    "listbox",  # <select multiple>
-    "menu",  # No implicit HTML element
-    "menubar",  # No implicit HTML element
-    "radiogroup",  # No implicit HTML element
-    "tablist",  # No implicit HTML element
-    "tree",  # No implicit HTML element
-    "treegrid",  # No implicit HTML element
-]
-
-# Live Region Roles - Dynamic content
-LiveRegionRole = Literal[
-    "alert",  # No implicit HTML element
-    "log",  # No implicit HTML element
-    "marquee",  # No implicit HTML element
-    "status",  # <output>
-    "timer",  # No implicit HTML element
-]
-
-# Window Roles - Application-like interfaces
-WindowRole = Literal[
-    "alertdialog",  # No implicit HTML element
-    "dialog",  # <dialog>
-]
-
-# Combined type for all ARIA roles
-AriaRole = (
-    LandmarkRole
-    | DocumentStructureRole
-    | WidgetRole
-    | CompositeWidgetRole
-    | LiveRegionRole
-    | WindowRole
-)
+# Keep individual role categories for internal use if needed
+LandmarkRole = Literal["banner", "complementary", "contentinfo", "form", "main", "navigation", "region", "search"]
+DocumentStructureRole = Literal["article", "document", "feed", "figure", "img", "list", "listitem", "math", "none", "presentation", "table", "rowgroup", "row", "cell", "columnheader", "rowheader", "gridcell", "heading", "separator"]
+WidgetRole = Literal["button", "checkbox", "gridcell", "link", "menuitem", "menuitemcheckbox", "menuitemradio", "option", "progressbar", "radio", "scrollbar", "searchbox", "slider", "spinbutton", "switch", "tab", "tabpanel", "textbox", "treeitem"]
+CompositeWidgetRole = Literal["combobox", "grid", "listbox", "menu", "menubar", "radiogroup", "tablist", "tree", "treegrid"]
+LiveRegionRole = Literal["alert", "log", "marquee", "status", "timer"]
+WindowRole = Literal["alertdialog", "dialog"]
 
 # Note: Using keyword-only arguments with * separator instead of options dictionary
 
@@ -127,6 +59,82 @@ AriaRole = (
 _NOT_FOUND_MSG = "Unable to find element with {query_type}: {value}"
 _NOT_FOUND_PLURAL_MSG = "Unable to find elements with {query_type}: {value}"
 _MULTIPLE_MSG = "Found multiple elements with {query_type}: {value}"
+
+
+# Generic query wrapper factory - reduces boilerplate
+def _make_query_variants(
+    query_all_func: Callable[..., list[Element]],
+    query_type: str,
+) -> tuple[
+    Callable[..., list[Element]],
+    Callable[..., Element | None],
+    Callable[..., Element],
+    Callable[..., list[Element]],
+]:
+    """
+    Generate query/get/get_all variants from a query_all base function.
+
+    This factory creates four query functions from a single implementation:
+    - query_all_by_*: Returns list (possibly empty)
+    - query_by_*: Returns first element or None
+    - get_by_*: Returns first element or raises error
+    - get_all_by_*: Returns list or raises error
+
+    Args:
+        query_all_func: Base function that returns list[Element]
+        query_type: Human-readable name for error messages (e.g., "text", "role")
+
+    Returns:
+        Tuple of (query_all, query_by, get_by, get_all) functions
+    """
+
+    def query_by(*args, **kwargs) -> Element | None:
+        """Return first matching element or None (raises on multiple matches)."""
+        elements = query_all_func(*args, **kwargs)
+        if not elements:
+            return None
+        if len(elements) > 1:
+            value_str = str(args[1]) if len(args) > 1 else "..."
+            raise MultipleElementsError(
+                _MULTIPLE_MSG.format(query_type=query_type, value=value_str),
+                count=len(elements),
+            )
+        return elements[0]
+
+    def get_by(*args, **kwargs) -> Element:
+        """Return first matching element or raise error."""
+        elements = query_all_func(*args, **kwargs)
+        if not elements:
+            # Try to extract meaningful value from args for error message
+            value_str = str(args[1]) if len(args) > 1 else "..."
+            raise ElementNotFoundError(
+                _NOT_FOUND_MSG.format(query_type=query_type, value=value_str)
+            )
+        if len(elements) > 1:
+            value_str = str(args[1]) if len(args) > 1 else "..."
+            raise MultipleElementsError(
+                _MULTIPLE_MSG.format(query_type=query_type, value=value_str),
+                count=len(elements),
+            )
+        return elements[0]
+
+    def get_all(*args, **kwargs) -> list[Element]:
+        """Return all matching elements or raise error."""
+        elements = query_all_func(*args, **kwargs)
+        if not elements:
+            value_str = str(args[1]) if len(args) > 1 else "..."
+            raise ElementNotFoundError(
+                _NOT_FOUND_PLURAL_MSG.format(query_type=query_type, value=value_str)
+            )
+        return elements
+
+    # Preserve function names for debugging
+    query_by.__name__ = f"query_by_{query_type}"
+    get_by.__name__ = f"get_by_{query_type}"
+    get_all.__name__ = f"get_all_by_{query_type}"
+
+    return query_all_func, query_by, get_by, get_all
+
 
 # Cached role mappings for performance
 _ROLE_MAP = {
@@ -345,30 +353,10 @@ def query_all_by_text(container: Container, text: str) -> list[Element]:
     return results
 
 
-def get_by_text(container: Container, text: str) -> Element:
-    """Find a single element containing the specified text."""
-    elements = query_all_by_text(container, text)
-    if not elements:
-        raise ElementNotFoundError(f"Unable to find element with text: {text}")
-    if len(elements) > 1:
-        raise MultipleElementsError(
-            f"Found multiple elements with text: {text}", count=len(elements)
-        )
-    return elements[0]
-
-
-def query_by_text(container: Container, text: str) -> Element | None:
-    """Find a single element containing the specified text, return None if not found."""
-    elements = query_all_by_text(container, text)
-    return elements[0] if elements else None
-
-
-def get_all_by_text(container: Container, text: str) -> list[Element]:
-    """Find all elements containing the specified text, raise error if none found."""
-    elements = query_all_by_text(container, text)
-    if not elements:
-        raise ElementNotFoundError(f"Unable to find elements with text: {text}")
-    return elements
+# Generate query variants using factory
+_, query_by_text, get_by_text, get_all_by_text = _make_query_variants(
+    query_all_by_text, "text"
+)
 
 
 # Test ID-based queries
@@ -553,53 +541,10 @@ def query_all_by_class(container: Container, class_name: str) -> list[Element]:
     return _elements_with_class(container, class_name)
 
 
-def get_all_by_class(container: Container, class_name: str) -> list[Element]:
-    """Find all elements that have the given CSS class token.
-
-    Raises ElementNotFoundError if none match.
-    """
-    elements = _elements_with_class(container, class_name)
-    if not elements:
-        raise ElementNotFoundError(
-            f"Unable to find elements with class: {class_name}",
-            suggestion="Ensure at least one element has the specified class",
-        )
-    return elements
-
-
-def query_by_class(container: Container, class_name: str) -> Element | None:
-    """Find a single element that has the given CSS class token.
-
-    Returns the element if exactly one match exists, None if none, and raises
-    MultipleElementsError if more than one element matches.
-    """
-    elements = _elements_with_class(container, class_name)
-    if not elements:
-        return None
-    if len(elements) > 1:
-        raise MultipleElementsError(
-            f"Found multiple elements with class: {class_name}", count=len(elements)
-        )
-    return elements[0]
-
-
-def get_by_class(container: Container, class_name: str) -> Element:
-    """Find a single element that has the given CSS class token.
-
-    Raises ElementNotFoundError if none match and MultipleElementsError if more
-    than one element matches.
-    """
-    elements = _elements_with_class(container, class_name)
-    if not elements:
-        raise ElementNotFoundError(
-            f"Unable to find element with class: {class_name}",
-            suggestion="Ensure the class exists on a rendered element",
-        )
-    if len(elements) > 1:
-        raise MultipleElementsError(
-            f"Found multiple elements with class: {class_name}", count=len(elements)
-        )
-    return elements[0]
+# Generate query variants using factory
+_, query_by_class, get_by_class, get_all_by_class = _make_query_variants(
+    query_all_by_class, "class"
+)
 
 
 # Helper function for finding form controls (moved to module level for performance)
@@ -729,30 +674,17 @@ def query_all_by_label_text(container: Container, text: str) -> list[Element]:
     return _query_all_by_label_text_impl(container, text, find_first=False)
 
 
-def get_by_label_text(container: Container, text: str) -> Element:
-    """Find a single element with the specified label text."""
-    elements = query_all_by_label_text(container, text)
-    if not elements:
-        raise ElementNotFoundError(f"Unable to find element with label text: {text}")
-    if len(elements) > 1:
-        raise MultipleElementsError(
-            f"Found multiple elements with label text: {text}", count=len(elements)
-        )
-    return elements[0]
-
-
+# Special case: query_by uses early-exit optimization
 def query_by_label_text(container: Container, text: str) -> Element | None:
     """Find a single element with the specified label text, return None if not found."""
     elements = _query_all_by_label_text_impl(container, text, find_first=True)
     return elements[0] if elements else None
 
 
-def get_all_by_label_text(container: Container, text: str) -> list[Element]:
-    """Find all elements with the specified label text, raise error if none found."""
-    elements = query_all_by_label_text(container, text)
-    if not elements:
-        raise ElementNotFoundError(f"Unable to find elements with label text: {text}")
-    return elements
+# Generate get_by and get_all_by variants using factory
+_, _, get_by_label_text, get_all_by_label_text = _make_query_variants(
+    query_all_by_label_text, "label text"
+)
 
 
 # Tag name-based queries with optional attribute filtering

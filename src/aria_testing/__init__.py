@@ -35,12 +35,6 @@ from .queries import (
     query_all_by_class,
     # Type exports
     AriaRole,
-    LandmarkRole,
-    DocumentStructureRole,
-    WidgetRole,
-    CompositeWidgetRole,
-    LiveRegionRole,
-    WindowRole,
     Container,
 )
 from .utils import get_text_content, normalize_text
@@ -80,11 +74,5 @@ __all__ = [
     "MultipleElementsError",
     # Type exports
     "AriaRole",
-    "LandmarkRole",
-    "DocumentStructureRole",
-    "WidgetRole",
-    "CompositeWidgetRole",
-    "LiveRegionRole",
-    "WindowRole",
     "Container",
 ]

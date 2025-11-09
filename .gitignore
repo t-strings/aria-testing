@@ -15,3 +15,4 @@ _build
 .junie
 .aiassistant
 /.claude/settings.local.json
+/profile.stats
