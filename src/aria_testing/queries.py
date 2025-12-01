@@ -27,29 +27,138 @@ Container = Element | Fragment | Node
 # Simplified to a single flat Literal for easier maintenance
 AriaRole = Literal[
     # Landmark roles - Define page structure and navigation
-    "banner", "complementary", "contentinfo", "form", "main", "navigation", "region", "search",
+    "banner",
+    "complementary",
+    "contentinfo",
+    "form",
+    "main",
+    "navigation",
+    "region",
+    "search",
     # Document structure roles - Organize content
-    "article", "document", "feed", "figure", "img", "list", "listitem", "math",
-    "none", "presentation", "table", "rowgroup", "row", "cell", "columnheader",
-    "rowheader", "gridcell", "heading", "separator",
+    "article",
+    "document",
+    "feed",
+    "figure",
+    "img",
+    "list",
+    "listitem",
+    "math",
+    "none",
+    "presentation",
+    "table",
+    "rowgroup",
+    "row",
+    "cell",
+    "columnheader",
+    "rowheader",
+    "gridcell",
+    "heading",
+    "separator",
     # Widget roles - Interactive elements
-    "button", "checkbox", "link", "menuitem", "menuitemcheckbox", "menuitemradio",
-    "option", "progressbar", "radio", "scrollbar", "searchbox", "slider", "spinbutton",
-    "switch", "tab", "tabpanel", "textbox", "treeitem",
+    "button",
+    "checkbox",
+    "link",
+    "menuitem",
+    "menuitemcheckbox",
+    "menuitemradio",
+    "option",
+    "progressbar",
+    "radio",
+    "scrollbar",
+    "searchbox",
+    "slider",
+    "spinbutton",
+    "switch",
+    "tab",
+    "tabpanel",
+    "textbox",
+    "treeitem",
     # Composite widget roles - Complex interactive elements
-    "combobox", "grid", "listbox", "menu", "menubar", "radiogroup", "tablist",
-    "tree", "treegrid",
+    "combobox",
+    "grid",
+    "listbox",
+    "menu",
+    "menubar",
+    "radiogroup",
+    "tablist",
+    "tree",
+    "treegrid",
     # Live region roles - Dynamic content
-    "alert", "log", "marquee", "status", "timer",
+    "alert",
+    "log",
+    "marquee",
+    "status",
+    "timer",
     # Window roles - Application-like interfaces
-    "alertdialog", "dialog",
+    "alertdialog",
+    "dialog",
 ]
 
 # Keep individual role categories for internal use if needed
-LandmarkRole = Literal["banner", "complementary", "contentinfo", "form", "main", "navigation", "region", "search"]
-DocumentStructureRole = Literal["article", "document", "feed", "figure", "img", "list", "listitem", "math", "none", "presentation", "table", "rowgroup", "row", "cell", "columnheader", "rowheader", "gridcell", "heading", "separator"]
-WidgetRole = Literal["button", "checkbox", "gridcell", "link", "menuitem", "menuitemcheckbox", "menuitemradio", "option", "progressbar", "radio", "scrollbar", "searchbox", "slider", "spinbutton", "switch", "tab", "tabpanel", "textbox", "treeitem"]
-CompositeWidgetRole = Literal["combobox", "grid", "listbox", "menu", "menubar", "radiogroup", "tablist", "tree", "treegrid"]
+LandmarkRole = Literal[
+    "banner",
+    "complementary",
+    "contentinfo",
+    "form",
+    "main",
+    "navigation",
+    "region",
+    "search",
+]
+DocumentStructureRole = Literal[
+    "article",
+    "document",
+    "feed",
+    "figure",
+    "img",
+    "list",
+    "listitem",
+    "math",
+    "none",
+    "presentation",
+    "table",
+    "rowgroup",
+    "row",
+    "cell",
+    "columnheader",
+    "rowheader",
+    "gridcell",
+    "heading",
+    "separator",
+]
+WidgetRole = Literal[
+    "button",
+    "checkbox",
+    "gridcell",
+    "link",
+    "menuitem",
+    "menuitemcheckbox",
+    "menuitemradio",
+    "option",
+    "progressbar",
+    "radio",
+    "scrollbar",
+    "searchbox",
+    "slider",
+    "spinbutton",
+    "switch",
+    "tab",
+    "tabpanel",
+    "textbox",
+    "treeitem",
+]
+CompositeWidgetRole = Literal[
+    "combobox",
+    "grid",
+    "listbox",
+    "menu",
+    "menubar",
+    "radiogroup",
+    "tablist",
+    "tree",
+    "treegrid",
+]
 LiveRegionRole = Literal["alert", "log", "marquee", "status", "timer"]
 WindowRole = Literal["alertdialog", "dialog"]
 
@@ -570,8 +679,7 @@ def _find_by_aria_label(elements: list[Element], text: str) -> list[Element]:
     return [
         element
         for element in elements
-        if (aria_label := element.attrs.get("aria-label"))
-        and text in aria_label
+        if (aria_label := element.attrs.get("aria-label")) and text in aria_label
     ]
 
 

@@ -147,7 +147,7 @@ aria-testing is optimized for speed:
 
 ## Documentation
 
-For full documentation, see the [aria-testing guide](docs/aria-testing.md).
+For full documentation, visit [https://t-strings.github.io/aria-testing/](https://t-strings.github.io/aria-testing/).
 
 ## License
 

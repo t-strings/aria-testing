@@ -11,6 +11,11 @@ dependencies = [
     "tdom",
 ]
 
+[project.urls]
+Documentation = "https://t-strings.github.io/aria-testing/"
+Repository = "https://github.com/t-strings/aria-testing"
+Homepage = "https://github.com/t-strings/aria-testing"
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
