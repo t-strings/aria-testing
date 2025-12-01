@@ -30,7 +30,7 @@ jobs:
         continue-on-error: false
 
       - name: Type check
-        run: uv run ty
+        run: uv run ty check
         continue-on-error: false
 
       - name: Run tests
