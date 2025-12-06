@@ -6,10 +6,12 @@ search within any tdom structure returned by html().
 """
 
 import re
+import sys
 from typing import Callable, Literal
 
 from tdom import Element, Fragment, Node
 
+from aria_testing.cache import get_role_cache
 from aria_testing.errors import ElementNotFoundError, MultipleElementsError
 from aria_testing.utils import (
     find_elements_by_attribute,
@@ -199,7 +201,9 @@ def _make_query_variants(
 
     def query_by(*args, **kwargs) -> Element | None:
         """Return first matching element or None (raises on multiple matches)."""
-        elements = query_all_func(*args, **kwargs)
+        # Early exit optimization: only need to find 2 elements max
+        kwargs_with_limit = {**kwargs, "_max_results": 2}
+        elements = query_all_func(*args, **kwargs_with_limit)
         if not elements:
             return None
         if len(elements) > 1:
@@ -212,7 +216,9 @@ def _make_query_variants(
 
     def get_by(*args, **kwargs) -> Element:
         """Return first matching element or raise error."""
-        elements = query_all_func(*args, **kwargs)
+        # Early exit optimization: only need to find 2 elements max
+        kwargs_with_limit = {**kwargs, "_max_results": 2}
+        elements = query_all_func(*args, **kwargs_with_limit)
         if not elements:
             # Try to extract meaningful value from args for error message
             value_str = str(args[1]) if len(args) > 1 else "..."
@@ -245,65 +251,95 @@ def _make_query_variants(
     return query_all_func, query_by, get_by, get_all
 
 
-# Cached role mappings for performance
+# Cached role mappings for performance with string interning
+# String interning makes string comparisons faster via identity check
 _ROLE_MAP = {
-    "button": "button",
-    "summary": "button",  # <summary> has implicit role of button
-    "nav": "navigation",
-    "main": "main",
-    "header": "banner",
-    "footer": "contentinfo",
-    "aside": "complementary",
-    "h1": "heading",
-    "h2": "heading",
-    "h3": "heading",
-    "h4": "heading",
-    "h5": "heading",
-    "h6": "heading",
-    "a": "link",
-    "ul": "list",
-    "ol": "list",
-    "li": "listitem",
-    "form": "form",
-    "img": "img",
-    "textarea": "textbox",
+    sys.intern("button"): sys.intern("button"),
+    sys.intern("summary"): sys.intern(
+        "button"
+    ),  # <summary> has implicit role of button
+    sys.intern("nav"): sys.intern("navigation"),
+    sys.intern("main"): sys.intern("main"),
+    sys.intern("header"): sys.intern("banner"),
+    sys.intern("footer"): sys.intern("contentinfo"),
+    sys.intern("aside"): sys.intern("complementary"),
+    sys.intern("h1"): sys.intern("heading"),
+    sys.intern("h2"): sys.intern("heading"),
+    sys.intern("h3"): sys.intern("heading"),
+    sys.intern("h4"): sys.intern("heading"),
+    sys.intern("h5"): sys.intern("heading"),
+    sys.intern("h6"): sys.intern("heading"),
+    sys.intern("a"): sys.intern("link"),
+    sys.intern("ul"): sys.intern("list"),
+    sys.intern("ol"): sys.intern("list"),
+    sys.intern("li"): sys.intern("listitem"),
+    sys.intern("form"): sys.intern("form"),
+    sys.intern("img"): sys.intern("img"),
+    sys.intern("textarea"): sys.intern("textbox"),
 }
 
 _INPUT_TYPE_MAP = {
-    "text": "textbox",
-    "email": "textbox",
-    "password": "textbox",
-    "number": "spinbutton",
-    "checkbox": "checkbox",
-    "radio": "radio",
-    "button": "button",
-    "submit": "button",
-    "reset": "button",
+    sys.intern("text"): sys.intern("textbox"),
+    sys.intern("email"): sys.intern("textbox"),
+    sys.intern("password"): sys.intern("textbox"),
+    sys.intern("number"): sys.intern("spinbutton"),
+    sys.intern("checkbox"): sys.intern("checkbox"),
+    sys.intern("radio"): sys.intern("radio"),
+    sys.intern("button"): sys.intern("button"),
+    sys.intern("submit"): sys.intern("button"),
+    sys.intern("reset"): sys.intern("button"),
 }
 
 
 def get_role_for_element(node: Node) -> str | None:
-    """Get the ARIA role for a node (only Elements can have roles)."""
+    """
+    Get the ARIA role for a node (only Elements can have roles).
+
+    Uses caching to avoid redundant role computation for the same elements.
+    """
     # Only Elements can have ARIA roles
     if not isinstance(node, Element):
         return None
 
     element = node
 
+    # Check cache first
+    cache = get_role_cache()
+    if getattr(cache, "_enabled", True):
+        cached_role = cache.get(element)
+        if cached_role is not cache._NOT_CACHED:
+            return cached_role
+
+    # Cache miss - compute role
+    role = _compute_role(element)
+
+    # Store in cache
+    if getattr(cache, "_enabled", True):
+        cache.set(element, role)
+
+    return role
+
+
+def _compute_role(element: Element) -> str | None:
+    """
+    Compute the ARIA role for an element (internal, non-cached version).
+
+    This is separated from get_role_for_element to make caching logic clear.
+    """
     # Check explicit role
     if "role" in element.attrs:
         return element.attrs["role"]
 
-    # Check implicit roles
-    tag = element.tag.lower()
+    # Check implicit roles - use casefold() for better performance and Unicode handling
+    tag = sys.intern(element.tag.casefold())
 
     if tag in _ROLE_MAP:
         return _ROLE_MAP[tag]
 
     # Special handling for input elements
-    if tag == "input":
-        input_type = (element.attrs.get("type") or "text").lower()
-        return _INPUT_TYPE_MAP.get(input_type, "textbox")
+    if tag == sys.intern("input"):
+        input_type = sys.intern((element.attrs.get("type") or "text").casefold())
+        return _INPUT_TYPE_MAP.get(input_type, sys.intern("textbox"))
 
     return None
 
@@ -314,6 +350,7 @@ def query_all_by_role(
     *,
     level: int | None = None,
     name: str | re.Pattern[str] | None = None,
+    _max_results: int | None = None,
 ) -> list[Element]:
     """Find all elements with the specified role.
 
@@ -322,13 +359,23 @@ def query_all_by_role(
         role: The ARIA role to search for
         level: Heading level for heading roles (keyword-only)
         name: Accessible name to match (keyword-only)
+        _max_results: Internal parameter for early exit optimization
 
     Returns:
         List of elements matching the criteria
     """
     # Skip container element itself if container is an Element
     skip_container = isinstance(container, Element)
-    elements = get_all_elements(container, skip_root=skip_container)
+
+    # For role+name queries, we can't use max_results in get_all_elements
+    # because we need to filter by name after getting role matches
+    if name is not None:
+        elements = get_all_elements(container, skip_root=skip_container)
+    else:
+        # Use early exit for role-only queries
+        elements = get_all_elements(
+            container, skip_root=skip_container, max_results=_max_results
+        )
 
     results = []
     for element in elements:
@@ -338,7 +385,7 @@ def query_all_by_role(
 
         # Check heading level
         if level is not None and role == "heading":
-            if element.tag.lower() == f"h{level}":
+            if element.tag.casefold() == f"h{level}":
                 pass  # Match
             elif "aria-level" in element.attrs:
                 try:
@@ -350,7 +397,7 @@ def query_all_by_role(
             else:
                 continue
 
-        # Check accessible name
+        # Check accessible name (lazy evaluation - only if needed)
         if name is not None:
             element_name = get_accessible_name(element, element_role)
             if isinstance(name, re.Pattern):
@@ -363,6 +410,10 @@ def query_all_by_role(
                     continue
 
         results.append(element)
+
+        # Early exit if we've found enough results
+        if _max_results is not None and len(results) >= _max_results:
+            return results
 
     return results
 
@@ -448,7 +499,9 @@ def get_all_by_role(
     return elements
 
 
-def query_all_by_text(container: Container, text: str) -> list[Element]:
+def query_all_by_text(
+    container: Container, text: str, *, _max_results: int | None = None
+) -> list[Element]:
     """Find all elements containing the specified text."""
     # Skip container element itself if container is an Element
     skip_container = isinstance(container, Element)
@@ -459,6 +512,9 @@ def query_all_by_text(container: Container, text: str) -> list[Element]:
         element_text = get_text_content(element)
         if text in element_text:
             results.append(element)
+            # Early exit if we've found enough
+            if _max_results is not None and len(results) >= _max_results:
+                return results
     return results
 
 
@@ -621,7 +677,9 @@ def get_by_id(container: Container, element_id: str) -> Element:
 # Class-based queries
 
 
-def _elements_with_class(container: Container, class_name: str) -> list[Element]:
+def _elements_with_class(
+    container: Container, class_name: str, *, _max_results: int | None = None
+) -> list[Element]:
     """Return all elements whose class attribute contains class_name as a token.
 
     HTML class attributes are a space-separated list of tokens. This matches
@@ -639,15 +697,20 @@ def _elements_with_class(container: Container, class_name: str) -> list[Element]
             class_tokens = set(cls.split())
             if class_name in class_tokens:
                 results.append(el)
+                # Early exit if we've found enough
+                if _max_results is not None and len(results) >= _max_results:
+                    return results
     return results
 
 
-def query_all_by_class(container: Container, class_name: str) -> list[Element]:
+def query_all_by_class(
+    container: Container, class_name: str, *, _max_results: int | None = None
+) -> list[Element]:
     """Find all elements that have the given CSS class token.
 
     Returns a (possibly empty) list of matches.
     """
-    return _elements_with_class(container, class_name)
+    return _elements_with_class(container, class_name, _max_results=_max_results)
 
 
 # Generate query variants using factory
@@ -663,7 +726,7 @@ def _find_form_controls(element: Element) -> list[Element]:
 
     def traverse(node):
         if isinstance(node, Element):
-            if node.tag.lower() in {"input", "textarea", "select", "button"}:
+            if node.tag.casefold() in {"input", "textarea", "select", "button"}:
                 results.append(node)
             if hasattr(node, "children"):
                 for child in node.children:
@@ -729,7 +792,10 @@ def _find_by_aria_labelledby(elements: list[Element], text: str) -> list[Element
 
 # Label text-based queries
 def _query_all_by_label_text_impl(
-    container: Container, text: str, find_first: bool = False
+    container: Container,
+    text: str,
+    find_first: bool = False,
+    max_results: int | None = None,
 ) -> list[Element]:
     """Internal implementation with optional early exit for single-element queries."""
     # Skip container element itself if container is an Element
@@ -745,7 +811,7 @@ def _query_all_by_label_text_impl(
         return results
 
     # Get all label elements for remaining strategies
-    label_elements = [el for el in elements if el.tag.lower() == "label"]
+    label_elements = [el for el in elements if el.tag.casefold() == "label"]
 
     # Strategy 2: Find by <label for="id">
     label_for_matches = _find_by_label_for(elements, label_elements, text)
@@ -766,10 +832,17 @@ def _query_all_by_label_text_impl(
     # Remove duplicates while preserving order using dict
     # Dict maintains insertion order since Python 3.7+
     # Use id() as key since Element instances need identity-based uniqueness
-    return list({id(el): el for el in results}.values())
+    unique_results = list({id(el): el for el in results}.values())
+
+    # Apply max_results if specified
+    if max_results is not None:
+        return unique_results[:max_results]
+    return unique_results
 
 
-def query_all_by_label_text(container: Container, text: str) -> list[Element]:
+def query_all_by_label_text(
+    container: Container, text: str, *, _max_results: int | None = None
+) -> list[Element]:
     """Find all elements with the specified label text.
 
     This function looks for elements that have:
@@ -779,7 +852,9 @@ def query_all_by_label_text(container: Container, text: str) -> list[Element]:
        - Nesting the element inside the label
     3. An aria-labelledby attribute pointing to an element with the text
     """
-    return _query_all_by_label_text_impl(container, text, find_first=False)
+    return _query_all_by_label_text_impl(
+        container, text, find_first=False, max_results=_max_results
+    )
 
 
 # Special case: query_by uses early-exit optimization

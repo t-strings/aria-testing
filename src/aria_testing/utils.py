@@ -5,7 +5,9 @@ Utility functions for text extraction and normalization from tdom nodes.
 import re
 from typing import Callable
 
-from tdom import Node, Element, Text, Fragment
+from tdom import Element, Fragment, Node, Text
+
+from aria_testing.cache import get_element_list_cache
 
 
 def get_text_content(node: Node) -> str:
@@ -74,18 +76,20 @@ def matches_text(
     if normalize:
         element_text = normalize_text(element_text)
 
-    if isinstance(matcher, re.Pattern):
-        return bool(matcher.search(element_text))
-    elif isinstance(matcher, str):
-        if normalize:
-            matcher = normalize_text(matcher)
+    match matcher:
+        case re.Pattern():
+            return bool(matcher.search(element_text))
+        case str():
+            if normalize:
+                matcher = normalize_text(matcher)
 
-        if exact:
-            return element_text == matcher
-        else:
-            return matcher.lower() in element_text.lower()
-    else:
-        return False
+            if exact:
+                return element_text == matcher
+            else:
+                return matcher.casefold() in element_text.casefold()
+        case _:
+            # This should never happen with correct typing, but included for type exhaustiveness
+            return False
 
 
 def _traverse_elements(
@@ -93,36 +97,50 @@ def _traverse_elements(
     predicate: Callable[[Element], bool] | None = None,
     *,
     skip_root: bool = False,
+    max_results: int | None = None,
 ) -> list[Element]:
     """
     Generic tree traversal that collects elements matching a predicate.
+
+    Uses iterative (non-recursive) traversal with early exit optimization.
 
     Args:
         container: The container node to search within
         predicate: Optional function to test each element. If None, collects all elements.
         skip_root: If True and container is an Element, exclude the container itself
+        max_results: If set, stop after finding this many matching elements (early exit)
 
     Returns:
         List of matching elements
     """
     results: list[Element] = []
 
-    def traverse(node: Node, is_root: bool = True) -> None:
+    # Iterative traversal using a stack (faster than recursion)
+    # Stack contains tuples of (node, is_root)
+    stack: list[tuple[Node, bool]] = [(container, True)]
+
+    while stack:
+        node, is_root = stack.pop()
+
         match node:
             case Element():
                 # Add element if not skipping root or not at root
                 if not (skip_root and is_root):
                     if predicate is None or predicate(node):
                         results.append(node)
-                # Always traverse children
-                for child in node.children:
-                    traverse(child, False)
+                        # Early exit optimization
+                        if max_results is not None and len(results) >= max_results:
+                            return results
+
+                # Add children to stack in reverse order (to maintain left-to-right traversal)
+                for child in reversed(node.children):
+                    stack.append((child, False))
+
             case Fragment():
                 # Fragments are never considered root for skipping
-                for child in node.children:
-                    traverse(child, False)
+                for child in reversed(node.children):
+                    stack.append((child, False))
 
-    traverse(container)
     return results
 
 
@@ -160,22 +178,46 @@ def find_elements_by_tag(container: Node, tag: str) -> list[Element]:
     Returns:
         List of matching elements
     """
-    tag_lower = tag.lower()
-    return _traverse_elements(container, lambda el: el.tag.lower() == tag_lower)
+    tag_casefolded = tag.casefold()
+    return _traverse_elements(container, lambda el: el.tag.casefold() == tag_casefolded)
 
 
-def get_all_elements(container: Node, *, skip_root: bool = False) -> list[Element]:
+def get_all_elements(
+    container: Node, *, skip_root: bool = False, max_results: int | None = None
+) -> list[Element]:
     """
     Get all Element nodes within the container.
+
+    Uses caching to avoid redundant traversals when max_results is None.
 
     Args:
         container: The container node to search within
         skip_root: If True and container is an Element, exclude the container itself
+        max_results: If set, stop after finding this many elements (early exit optimization)
 
     Returns:
         List of all elements in the container
     """
-    return _traverse_elements(container, skip_root=skip_root)
+    # Only use cache when getting all elements (max_results is None)
+    # Early-exit queries can't be cached since they return partial results
+    if max_results is None:
+        cache = get_element_list_cache()
+
+        # Check if caching is enabled (via CacheContext)
+        if getattr(cache, "_enabled", True):
+            cached = cache.get(container, skip_root)
+            if cached is not None:
+                return cached
+
+            # Cache miss - compute and store
+            elements = _traverse_elements(
+                container, skip_root=skip_root, max_results=max_results
+            )
+            cache.set(container, skip_root, elements)
+            return elements
+
+    # Caching disabled or early exit - compute directly
+    return _traverse_elements(container, skip_root=skip_root, max_results=max_results)
 
 
 def get_accessible_name(element: Element, role: str | None = None) -> str:
@@ -207,51 +249,52 @@ def get_accessible_name(element: Element, role: str | None = None) -> str:
     # container context which this function doesn't have.
 
     # Role-specific naming
-    if role == "link":
-        # For links: combine text content and href for name matching
-        text = get_text_content(element).strip()
-        href = element.attrs.get("href", "")
+    match role:
+        case "link":
+            # For links: combine text content and href for name matching
+            text = get_text_content(element).strip()
+            href = element.attrs.get("href", "")
 
-        # Combine text and href for comprehensive name matching
-        name_parts = []
-        if text:
-            name_parts.append(text)
-        if href:
-            name_parts.append(href)
+            # Combine text and href for comprehensive name matching
+            name_parts = []
+            if text:
+                name_parts.append(text)
+            if href:
+                name_parts.append(href)
 
-        if name_parts:
-            return " ".join(name_parts)
+            if name_parts:
+                return " ".join(name_parts)
 
-        # If neither text nor href, fall through to general fallback
+            # If neither text nor href, fall through to general fallback
 
-    elif role == "button":
-        # For buttons: text content is primary
-        text = get_text_content(element).strip()
-        if text:
-            return text
+        case "button":
+            # For buttons: text content is primary
+            text = get_text_content(element).strip()
+            if text:
+                return text
 
-    elif role == "img":
-        # For images: alt text is primary
-        if "alt" in element.attrs:
-            alt = element.attrs["alt"]
-            if alt is not None:  # alt="" is valid
-                return alt
-        # Fallback to title
-        if "title" in element.attrs:
-            title = element.attrs["title"]
-            if title and title.strip():
-                return title.strip()
+        case "img":
+            # For images: alt text is primary
+            if "alt" in element.attrs:
+                alt = element.attrs["alt"]
+                if alt is not None:  # alt="" is valid
+                    return alt
+            # Fallback to title
+            if "title" in element.attrs:
+                title = element.attrs["title"]
+                if title and title.strip():
+                    return title.strip()
 
-    elif role in ("textbox", "combobox", "listbox"):
-        # For form controls, check value first, then placeholder, then text content
-        if "value" in element.attrs:
-            value = element.attrs["value"]
-            if value and value.strip():
-                return value.strip()
-        if "placeholder" in element.attrs:
-            placeholder = element.attrs["placeholder"]
-            if placeholder and placeholder.strip():
-                return placeholder.strip()
+        case "textbox" | "combobox" | "listbox":
+            # For form controls, check value first, then placeholder, then text content
+            if "value" in element.attrs:
+                value = element.attrs["value"]
+                if value and value.strip():
+                    return value.strip()
+            if "placeholder" in element.attrs:
+                placeholder = element.attrs["placeholder"]
+                if placeholder and placeholder.strip():
+                    return placeholder.strip()
 
     # General fallback: text content
     text = get_text_content(element).strip()

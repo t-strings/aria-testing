@@ -81,3 +81,19 @@ enable-pre-push:
 disable-pre-push:
     @chmod -x .git/hooks/pre-push 2>/dev/null || true
     @echo "Pre-push hook disabled. Use 'just enable-pre-push' to re-enable."
+
+# Run performance benchmark
+benchmark:
+    uv run python -m aria_testing.profiling.benchmark
+
+# Run caching performance benchmark
+benchmark-cache:
+    uv run python -m aria_testing.profiling.benchmark_caching
+
+# Profile query operations
+profile-queries:
+    uv run python -m aria_testing.profiling.profiler_queries
+
+# Profile test suite
+profile-tests:
+    uv run python -m aria_testing.profiling.profiler_tests
