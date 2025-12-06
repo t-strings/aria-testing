@@ -30,16 +30,17 @@ jobs:
       - name: Setup Python and uv
         uses: ./.github/actions/setup-python-uv
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Build the sphinx documentation
-        run: |
-          cd docs
-          uv run sphinx-build . _build
+        run: just docs
         continue-on-error: false
 
       - name: Upload artifact to pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs/_build
+          path: ./docs/_build/html
 
   # Deployment job
   deploy:
