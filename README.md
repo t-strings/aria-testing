@@ -2,6 +2,8 @@
 
 Accessibility-focused DOM testing library for tdom, built with modern Python 3.14+.
 
+📚 **[Full Documentation](https://t-strings.github.io/aria-testing/)** | 📦 **[PyPI Package](https://pypi.org/project/aria-testing/)** | 🐙 **[GitHub Repository](https://github.com/t-strings/aria-testing)**
+
 ## Overview
 
 `aria-testing` is a Python DOM testing library that provides accessibility-focused query functions for tdom. It follows
@@ -183,7 +185,14 @@ See `CACHING_IMPLEMENTATION.md` for detailed performance analysis.
 
 ## Documentation
 
-For full documentation, visit [https://t-strings.github.io/aria-testing/](https://t-strings.github.io/aria-testing/).
+📚 **[Read the full documentation on GitHub Pages →](https://t-strings.github.io/aria-testing/)**
+
+The documentation includes:
+- Complete API reference for all query functions
+- Detailed guides on accessibility testing patterns
+- Performance optimization techniques
+- Type safety and modern Python features
+- Advanced usage examples and best practices
 
 ## License
 
