@@ -1,6 +1,6 @@
 [project]
 name = "aria-testing"
-version = "0.1.0"
+version = "0.1.1"
 description = "Accessibility-focused DOM testing library for tdom"
 readme = "README.md"
 authors = [
