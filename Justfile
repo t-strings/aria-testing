@@ -15,16 +15,27 @@ info:
 install:
     uv sync --all-groups
 
-# Run tests fast
+# Alias for install (better discoverability)
+setup: install
+
+# Run tests (sequential)
 test *ARGS:
     uv run pytest {{ ARGS }}
 
-# Format (no changes)
-fmt:
-    uv run ruff check .
+# Run tests (parallel)
+test-parallel *ARGS:
+    uv run pytest -n auto {{ ARGS }}
 
-# Format and auto-fix
-fmt-fix:
+# Lint code (check for issues)
+lint *ARGS:
+    uv run ruff check {{ ARGS }} .
+
+# Format code (auto-format)
+fmt *ARGS:
+    uv run ruff format {{ ARGS }} .
+
+# Lint and auto-fix
+lint-fix:
     uv run ruff check --fix .
 
 # Type checking
@@ -44,9 +55,25 @@ clean:
     rm -rf .pytest_cache .ruff_cache .pyright .mypy_cache build dist
     find docs/_build -mindepth 1 -maxdepth 1 -not -name ".gitkeep" -exec rm -rf {} + || true
 
-# Run the same checks as CI
-ci:
-    just install
-    just fmt
-    just typecheck
-    just test
+# Run all quality checks with fail-fast behavior
+ci-checks:
+    just install && just lint && just typecheck && just test-parallel
+
+# Enable pre-push hook to run ci-checks before pushing
+enable-pre-push:
+    @echo "Installing pre-push hook..."
+    @echo '#!/bin/sh' > .git/hooks/pre-push
+    @echo '' >> .git/hooks/pre-push
+    @echo '# Run quality checks before push' >> .git/hooks/pre-push
+    @echo 'echo "Running quality checks before push..."' >> .git/hooks/pre-push
+    @echo 'if ! just ci-checks; then' >> .git/hooks/pre-push
+    @echo '    echo "Pre-push check failed! Push aborted."' >> .git/hooks/pre-push
+    @echo '    exit 1' >> .git/hooks/pre-push
+    @echo 'fi' >> .git/hooks/pre-push
+    @chmod +x .git/hooks/pre-push
+    @echo "Pre-push hook installed! Use 'just disable-pre-push' to disable."
+
+# Disable pre-push hook
+disable-pre-push:
+    @chmod -x .git/hooks/pre-push 2>/dev/null || true
+    @echo "Pre-push hook disabled. Use 'just enable-pre-push' to re-enable."
