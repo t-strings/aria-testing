@@ -188,7 +188,18 @@ aria-testing is optimized for speed with multiple performance strategies:
 - **Iterative traversal** - Non-recursive DOM traversal for large trees
 - **String interning** - Fast identity-based comparisons for common roles
 - **Set-based class matching** - O(1) class lookups
-- **Thread-safe** - Works with Python 3.14 free-threading & parallel test runners
+- **Free-threading compatible** - Full Python 3.14+ free-threading support (PEP 703)
+
+### Thread Safety & Concurrency
+
+aria-testing is **fully thread-safe** and designed for Python 3.14's free-threaded (no-GIL) interpreter:
+
+✅ **No shared mutable state** - All operations use function-local variables
+✅ **Immutable data structures** - Module constants use `MappingProxyType`
+✅ **No locking required** - Lock-free design for maximum performance
+✅ **Parallel test execution** - Works with pytest-xdist and concurrent.futures
+
+The library was designed from the ground up for concurrent execution. Previous caching mechanisms were intentionally removed to ensure race-condition-free operation in multi-threaded environments.
 
 📊 **[See detailed benchmarks →](https://t-strings.github.io/aria-testing/benchmark.html)**
 

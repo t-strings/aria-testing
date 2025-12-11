@@ -7,6 +7,7 @@ search within any tdom structure returned by html().
 
 import re
 import sys
+from types import MappingProxyType
 from typing import Callable, Literal
 
 from tdom import Element, Fragment, Node
@@ -250,44 +251,49 @@ def _make_query_variants(
     return query_all_func, query_by, get_by, get_all
 
 
-# Cached role mappings for performance with string interning
+# Immutable role mappings for performance with string interning
 # String interning makes string comparisons faster via identity check
-_ROLE_MAP = {
-    sys.intern("button"): sys.intern("button"),
-    sys.intern("summary"): sys.intern(
-        "button"
-    ),  # <summary> has implicit role of button
-    sys.intern("nav"): sys.intern("navigation"),
-    sys.intern("main"): sys.intern("main"),
-    sys.intern("header"): sys.intern("banner"),
-    sys.intern("footer"): sys.intern("contentinfo"),
-    sys.intern("aside"): sys.intern("complementary"),
-    sys.intern("h1"): sys.intern("heading"),
-    sys.intern("h2"): sys.intern("heading"),
-    sys.intern("h3"): sys.intern("heading"),
-    sys.intern("h4"): sys.intern("heading"),
-    sys.intern("h5"): sys.intern("heading"),
-    sys.intern("h6"): sys.intern("heading"),
-    sys.intern("a"): sys.intern("link"),
-    sys.intern("ul"): sys.intern("list"),
-    sys.intern("ol"): sys.intern("list"),
-    sys.intern("li"): sys.intern("listitem"),
-    sys.intern("form"): sys.intern("form"),
-    sys.intern("img"): sys.intern("img"),
-    sys.intern("textarea"): sys.intern("textbox"),
-}
+# MappingProxyType enforces immutability at runtime
+_ROLE_MAP = MappingProxyType(
+    {
+        sys.intern("button"): sys.intern("button"),
+        sys.intern("summary"): sys.intern(
+            "button"
+        ),  # <summary> has implicit role of button
+        sys.intern("nav"): sys.intern("navigation"),
+        sys.intern("main"): sys.intern("main"),
+        sys.intern("header"): sys.intern("banner"),
+        sys.intern("footer"): sys.intern("contentinfo"),
+        sys.intern("aside"): sys.intern("complementary"),
+        sys.intern("h1"): sys.intern("heading"),
+        sys.intern("h2"): sys.intern("heading"),
+        sys.intern("h3"): sys.intern("heading"),
+        sys.intern("h4"): sys.intern("heading"),
+        sys.intern("h5"): sys.intern("heading"),
+        sys.intern("h6"): sys.intern("heading"),
+        sys.intern("a"): sys.intern("link"),
+        sys.intern("ul"): sys.intern("list"),
+        sys.intern("ol"): sys.intern("list"),
+        sys.intern("li"): sys.intern("listitem"),
+        sys.intern("form"): sys.intern("form"),
+        sys.intern("img"): sys.intern("img"),
+        sys.intern("textarea"): sys.intern("textbox"),
+    }
+)
 
-_INPUT_TYPE_MAP = {
-    sys.intern("text"): sys.intern("textbox"),
-    sys.intern("email"): sys.intern("textbox"),
-    sys.intern("password"): sys.intern("textbox"),
-    sys.intern("number"): sys.intern("spinbutton"),
-    sys.intern("checkbox"): sys.intern("checkbox"),
-    sys.intern("radio"): sys.intern("radio"),
-    sys.intern("button"): sys.intern("button"),
-    sys.intern("submit"): sys.intern("button"),
-    sys.intern("reset"): sys.intern("button"),
-}
+_INPUT_TYPE_MAP = MappingProxyType(
+    {
+        sys.intern("text"): sys.intern("textbox"),
+        sys.intern("email"): sys.intern("textbox"),
+        sys.intern("password"): sys.intern("textbox"),
+        sys.intern("number"): sys.intern("spinbutton"),
+        sys.intern("checkbox"): sys.intern("checkbox"),
+        sys.intern("radio"): sys.intern("radio"),
+        sys.intern("button"): sys.intern("button"),
+        sys.intern("submit"): sys.intern("button"),
+        sys.intern("reset"): sys.intern("button"),
+    }
+)
 
 
 def get_role_for_element(node: Node) -> str | None:
