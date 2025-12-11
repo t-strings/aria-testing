@@ -16,6 +16,7 @@ Start here if you're new to aria-testing:
 
 - **README** (above) - Quick start and overview
 - **[Query Reference](queries.md)** - All query types and their usage
+- **[Assertion Helpers](assertion-helpers.md)** - Deferred execution for dynamic testing systems
 
 ### Practical Guides
 
@@ -69,6 +70,7 @@ This means:
 :hidden:
 
 queries
+assertion-helpers
 examples
 best-practices
 api

@@ -6,6 +6,21 @@ Node, Element, Text, and Fragment types. It follows DOM Testing Library's philos
 "The more your tests resemble the way your software is used, the more confidence they can give you."
 """
 
+from .assertions import (
+    GetAllByClass,
+    GetAllByLabelText,
+    GetAllByRole,
+    GetAllByTagName,
+    GetAllByTestId,
+    GetAllByText,
+    GetByClass,
+    GetById,
+    GetByLabelText,
+    GetByRole,
+    GetByTagName,
+    GetByTestId,
+    GetByText,
+)
 from .cache import (
     CacheContext,
     clear_all_caches,
@@ -73,6 +88,20 @@ __all__ = [
     "query_by_class",
     "get_all_by_class",
     "query_all_by_class",
+    # Assertion helpers
+    "GetByRole",
+    "GetByText",
+    "GetByLabelText",
+    "GetByTestId",
+    "GetByClass",
+    "GetById",
+    "GetByTagName",
+    "GetAllByRole",
+    "GetAllByText",
+    "GetAllByLabelText",
+    "GetAllByTestId",
+    "GetAllByClass",
+    "GetAllByTagName",
     # Utilities
     "get_text_content",
     "normalize_text",

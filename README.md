@@ -129,6 +129,35 @@ Each query type comes in **four variants** for different use cases:
 - **`get_all_by_*`**: When multiple elements MUST exist
 - **`query_all_by_*`**: When finding zero or more elements
 
+## Assertion Helpers
+
+Frozen dataclass-based assertion helpers for deferred execution in dynamic systems. Create assertions up front, apply them later when the DOM is available.
+
+```python
+from aria_testing import GetByRole, GetAllByRole
+
+# Define assertion early (no DOM needed yet)
+assert_button = GetByRole(role="button").text_content("Save")
+
+# Apply later when container becomes available
+def verify_component(container):
+    assert_button(container)  # Raises AssertionError if fails
+```
+
+**Use Cases:**
+- Component testing frameworks that render components dynamically
+- Story-based testing where assertions are defined separately from execution
+- Test fixtures that verify DOM structure after setup
+- Reusable assertion sets applied across multiple test scenarios
+
+**Key Features:**
+- Immutable frozen dataclasses
+- Fluent API: `.not_()`, `.text_content()`, `.with_attribute()`
+- List operations: `.count()`, `.nth()`
+- Type-safe with full IDE support
+
+📚 **[See full documentation →](https://t-strings.github.io/aria-testing/assertion-helpers.html)**
+
 ## Modern Python Features
 
 Built with cutting-edge Python 3.14+ features:
