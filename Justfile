@@ -1,5 +1,5 @@
 # Justfile for aria-testing
-# Requires: just, uv, Python 3.14
+# Requires: just, uv, Python 3.14t (free-threaded build)
 # All tasks use uv to ensure isolated, reproducible runs.
 
 # Default recipe shows help
