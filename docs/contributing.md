@@ -6,7 +6,7 @@ Guide for developers contributing to aria-testing.
 
 ### Prerequisites
 
-- Python 3.14+
+- Python 3.14t (free-threaded build)
 - [uv](https://docs.astral.sh/uv/) package manager
 - [just](https://just.systems/) command runner
 
@@ -45,11 +45,13 @@ just fmt-check     # Check formatting without changes
 just typecheck     # Run type checking
 
 # Testing
-just test          # Run tests (sequential)
-just test-parallel # Run tests (parallel)
+just test                # Run tests (sequential)
+just test-parallel       # Run tests (parallel with pytest-xdist)
+just test-freethreaded   # Run thread safety tests (8 threads x 10 iterations)
 
 # Quality checks
 just ci-checks     # Run all checks (lint, format, typecheck, tests)
+just ci-checks-ft  # All checks + free-threading safety tests
 
 # Documentation
 just docs          # Build documentation
@@ -282,6 +284,80 @@ just test-parallel
 # Run with coverage
 just test --cov
 ```
+
+### Thread Safety Testing
+
+aria-testing is designed for Python 3.14's free-threaded mode (no GIL). All code must be thread-safe.
+
+#### Testing for Thread Safety
+
+Use `pytest-freethreaded` to detect race conditions and threading issues:
+
+```bash
+# Run thread safety tests (8 threads, 10 iterations)
+just test-freethreaded
+
+# Custom thread/iteration counts
+pytest --threads=16 --iterations=50 --require-gil-disabled tests/
+
+# Test specific concurrency tests
+pytest tests/test_concurrency.py -v
+```
+
+#### What Gets Tested
+
+The `--threads` and `--iterations` options:
+- Run each test multiple times (`--iterations=10`)
+- Run tests concurrently across threads (`--threads=8`)
+- Expose race conditions, deadlocks, and non-deterministic behavior
+
+Example:
+```bash
+# This test will run 80 times total (8 threads × 10 iterations)
+pytest tests/test_queries.py::test_get_by_role --threads=8 --iterations=10
+```
+
+#### Writing Thread-Safe Tests
+
+**✅ Good - No shared mutable state:**
+```python
+def test_concurrent_queries():
+    # Each test creates its own container - thread-safe
+    doc = html(t'<div><button>Click</button></div>')
+    button = get_by_role(doc, "button")
+    assert button.tag == "button"
+```
+
+**⚠️ Careful - Shared containers are OK if read-only:**
+```python
+# Module-level container (created once)
+SAMPLE_DOC = html(t'<div><button>Click</button></div>')
+
+def test_read_only_access():
+    # Read-only access to shared container - thread-safe
+    button = get_by_role(SAMPLE_DOC, "button")
+    assert button.tag == "button"
+```
+
+**❌ Bad - Shared mutable state:**
+```python
+# Module-level mutable list - NOT thread-safe!
+results = []
+
+def test_with_shared_state():
+    # Multiple threads modifying same list - race condition!
+    element = get_by_role(doc, "button")
+    results.append(element)  # ❌ NOT THREAD-SAFE
+```
+
+#### Thread Safety Guidelines
+
+1. **No global mutable state** - Use function-local variables
+2. **Immutable data structures** - Use `MappingProxyType`, tuples, frozensets
+3. **No caching without locks** - Caching creates shared mutable state
+4. **Document thread-safety** - Mark functions as thread-safe in docstrings
+
+See `tests/test_concurrency.py` for examples of proper thread-safe testing.
 
 ## Adding New Features
 

@@ -18,5 +18,5 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
 
-      - name: Run CI checks
-        run: just ci-checks
+      - name: Run CI checks (including free-threading safety)
+        run: just ci-checks-ft

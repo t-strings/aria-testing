@@ -26,6 +26,10 @@ test *ARGS:
 test-parallel *ARGS:
     uv run pytest -n auto {{ ARGS }}
 
+# Run tests with free-threading safety checks (parallel threads + iterations)
+test-freethreaded *ARGS:
+    uv run pytest --threads=8 --iterations=10 --require-gil-disabled {{ ARGS }}
+
 # Lint code (check for issues)
 lint *ARGS:
     uv run ruff check {{ ARGS }} .
@@ -62,6 +66,10 @@ clean:
 # Run all quality checks with fail-fast behavior
 ci-checks:
     just install && just lint && just fmt-check && just typecheck && just test-parallel
+
+# Run all checks + free-threading safety tests
+ci-checks-ft:
+    just ci-checks && just test-freethreaded
 
 # Enable pre-push hook to run ci-checks before pushing
 enable-pre-push:

@@ -410,17 +410,53 @@ With Python 3.14's free-threaded build (no GIL):
 
 ### Running with Free-Threaded Python
 
-To test with Python 3.14's free-threaded build:
+aria-testing uses Python 3.14t (free-threaded build) by default and includes specialized testing to detect thread safety issues.
+
+#### Standard Testing
 
 ```bash
-# Install free-threaded Python 3.14
-# (Build with --disable-gil or use python3.14t)
+# Regular parallel tests (pytest-xdist)
+just test-parallel
 
-# Run tests with free-threading enabled
-PYTHON_GIL=0 pytest -n auto
+# All quality checks (lint, format, typecheck, tests)
+just ci-checks
+```
 
-# Verify no race conditions with longer runs
-PYTHON_GIL=0 pytest -n auto --count=100
+#### Free-Threading Safety Testing
+
+Uses `pytest-freethreaded` to run tests multiple times across multiple threads simultaneously:
+
+```bash
+# Run tests with thread safety detection
+just test-freethreaded
+
+# This runs: pytest --threads=8 --iterations=10 --require-gil-disabled
+# - 8 threads running tests in parallel
+# - 10 iterations of each test
+# - Requires GIL to be disabled (fails if not using 3.14t)
+```
+
+**What This Detects:**
+- Race conditions from concurrent access
+- Deadlocks and hangs (via timeouts)
+- Issues with global mutable state
+- Non-deterministic behavior
+
+**Timeouts Configured:**
+- `timeout = 60` - Test timeout (detects hangs)
+- `faulthandler_timeout = 120` - Dump stack traces on timeout
+
+#### Manual Free-Threading Testing
+
+```bash
+# Verify Python is free-threaded
+python -c "import sys; print(f'Free-threaded: {not sys._is_gil_enabled()}')"
+
+# Run with custom thread/iteration counts
+pytest --threads=16 --iterations=50 --require-gil-disabled tests/test_concurrency.py
+
+# Run specific stress test
+pytest tests/test_concurrency.py::TestThreadSafetyStress -v
 ```
 
 ### Thread-Safety Guarantees

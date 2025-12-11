@@ -21,6 +21,9 @@ Homepage = "https://github.com/t-strings/aria-testing"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-p no:doctest"
+# Free-threading safety: timeout tests to detect hangs/deadlocks
+timeout = 60
+faulthandler_timeout = 120
 
 [build-system]
 requires = ["uv_build>=0.8.17,<0.9.0"]
@@ -37,4 +40,6 @@ dev = [
     "sphinx-autobuild>=2024.9.3",
     "ty>=0.0.1a25",
     "coverage>=7.11.2",
+    "pytest-freethreaded>=0.1.0",
+    "pytest-timeout>=2.4.0",
 ]
