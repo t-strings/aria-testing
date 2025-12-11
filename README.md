@@ -2,7 +2,9 @@
 
 Accessibility-focused DOM testing library for tdom, built with modern Python 3.14+.
 
-📚 **[Full Documentation](https://t-strings.github.io/aria-testing/)** | 📦 **[PyPI Package](https://pypi.org/project/aria-testing/)** | 🐙 **[GitHub Repository](https://github.com/t-strings/aria-testing)**
+📚 **[Full Documentation](https://t-strings.github.io/aria-testing/)** | 📦 *
+*[PyPI Package](https://pypi.org/project/aria-testing/)** | 🐙 *
+*[GitHub Repository](https://github.com/t-strings/aria-testing)**
 
 ## Overview
 
@@ -12,11 +14,11 @@ they can give you."**
 
 ## Features
 
-✨ **Modern Python 3.14+** - Uses structural pattern matching, PEP 695 generics, and modern type hints
-🎯 **Accessibility-first** - Query by role, label text, and semantic attributes
-⚡ **High performance** - Optimized traversal with caching and early-exit strategies
-🔒 **Type-safe** - Full type annotations with strict type checking
-🧪 **Well-tested** - 144 tests, 100% passing, comprehensive coverage
+- ✨ **Modern Python 3.14+** - Uses structural pattern matching, PEP 695 generics, and modern type hints
+- 🎯 **Accessibility-first** - Query by role, label text, and semantic attributes
+- ⚡ **High performance** - Optimized traversal with caching and early-exit strategies
+- 🔒 **Type-safe** - Full type annotations with strict type checking
+- 🧪 **Well-tested** - 144 tests, 100% passing, comprehensive coverage
 
 ## Installation
 
@@ -57,6 +59,7 @@ button = get_by_text(document, "Submit")
 Queries are prioritized by accessibility best practices:
 
 ### 1. **By Role** ⭐ (Most Recommended)
+
 Find elements by their ARIA role - mirrors how screen readers interact with your app.
 
 ```python
@@ -66,6 +69,7 @@ link = get_by_role(document, "link", name="Home")
 ```
 
 ### 2. **By Label Text** ⭐
+
 Find form elements by their associated label - how users identify form fields.
 
 ```python
@@ -74,6 +78,7 @@ email = get_by_label_text(document, "Email Address")
 ```
 
 ### 3. **By Text**
+
 Find elements by their text content.
 
 ```python
@@ -82,6 +87,7 @@ heading = get_by_text(document, "Welcome")
 ```
 
 ### 4. **By Test ID**
+
 Find elements by `data-testid` attribute - useful when semantic queries aren't possible.
 
 ```python
@@ -89,6 +95,7 @@ component = get_by_test_id(document, "user-menu")
 ```
 
 ### 5. **By Tag Name**
+
 Find elements by HTML tag name - use sparingly, prefer semantic queries.
 
 ```python
@@ -96,6 +103,7 @@ all_links = get_all_by_tag_name(document, "a")
 ```
 
 ### 6. **By ID** & **By Class**
+
 Find elements by HTML attributes - available but less recommended.
 
 ```python
@@ -107,12 +115,12 @@ buttons = get_all_by_class(document, "btn-primary")
 
 Each query type comes in **four variants** for different use cases:
 
-| Variant | Returns | Not Found | Multiple Found |
-|---------|---------|-----------|----------------|
-| `get_by_*` | Single element | ❌ Raises error | ❌ Raises error |
-| `query_by_*` | Element or None | ✅ Returns None | ❌ Raises error |
-| `get_all_by_*` | List of elements | ❌ Raises error | ✅ Returns all |
-| `query_all_by_*` | List (possibly empty) | ✅ Returns `[]` | ✅ Returns all |
+| Variant          | Returns               | Not Found      | Multiple Found |
+|------------------|-----------------------|----------------|----------------|
+| `get_by_*`       | Single element        | ❌ Raises error | ❌ Raises error |
+| `query_by_*`     | Element or None       | ✅ Returns None | ❌ Raises error |
+| `get_all_by_*`   | List of elements      | ❌ Raises error | ✅ Returns all  |
+| `query_all_by_*` | List (possibly empty) | ✅ Returns `[]` | ✅ Returns all  |
 
 ### When to Use Each
 
@@ -145,26 +153,29 @@ aria-testing is highly optimized for speed with multiple performance strategies:
 
 ### Benchmark Results
 
-*Measured on December 6, 2024 - Apple M-series CPU, Python 3.14*
+*Measured on December 10, 2024 - Apple M-series CPU, Python 3.14*
 
 **Test Suite Performance**:
-- 154 tests complete in **0.07 seconds** ⚡
+
+- 154 tests complete in **0.08 seconds** ⚡
 
 **Query Performance** (200-element DOM, 100 iterations per query):
 
-| Query Type | Without Caching | With Caching | Speedup |
-|------------|----------------|--------------|---------|
-| Role queries | 4.1μs | 1.7μs | **2.4x faster** |
-| Text queries | 13.4μs | 10.8μs | **1.2x faster** |
-| Class queries | 3.2μs | 0.8μs | **4.1x faster** |
-| Tag queries | 3.2μs | 3.1μs | **1.0x faster** |
-| **Average** | **5.6μs** | **3.6μs** | **1.55x faster** |
+| Query Type    | Without Caching | With Caching | Speedup          |
+|---------------|-----------------|--------------|------------------|
+| Role queries  | 4.3μs           | 1.8μs        | **2.4x faster**  |
+| Text queries  | 13.6μs          | 11.2μs       | **1.2x faster**  |
+| Class queries | 3.2μs           | 0.7μs        | **4.3x faster**  |
+| Tag queries   | 3.5μs           | 3.1μs        | **1.1x faster**  |
+| **Average**   | **5.8μs**       | **3.7μs**    | **1.55x faster** |
 
 **Cache Efficiency**:
+
 - Element list cache: **99.8% hit rate**
 - Role cache: **99.5% hit rate**
 
 *Run benchmarks yourself*:
+
 ```bash
 just benchmark        # General performance
 just benchmark-cache  # Caching comparison
@@ -188,6 +199,7 @@ See `CACHING_IMPLEMENTATION.md` for detailed performance analysis.
 📚 **[Read the full documentation on GitHub Pages →](https://t-strings.github.io/aria-testing/)**
 
 The documentation includes:
+
 - Complete API reference for all query functions
 - Detailed guides on accessibility testing patterns
 - Performance optimization techniques
