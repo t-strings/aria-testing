@@ -33,6 +33,11 @@ myst_enable_extensions = [
     "deflist",
 ]
 
+# Support including external files (e.g., README.md)
+myst_parser_include = {
+    "relative_docs_path": "../",
+}
+
 templates_path = ["_templates"]
 exclude_patterns: list[str] = [
     "_build",
