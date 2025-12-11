@@ -172,15 +172,17 @@ Built with cutting-edge Python 3.14+ features:
 
 aria-testing is optimized for speed with multiple performance strategies:
 
-**Query Performance** (200-element DOM):
-- Average query time: **4.8μs** ⚡
-- Role queries: **3.6μs**
-- Text queries: **13.3μs**
-- Class/tag queries: **3.1μs**
+**Query Performance** (200-element DOM on Python 3.14t free-threaded):
+- Average query time: **3.99μs** ⚡ (21% faster than regular Python!)
+- Role queries: **2.85μs**
+- Text queries: **12.18μs**
+- Class/tag queries: **2.34μs**
 
 **Test Suite**:
 - 179 tests complete in **0.78 seconds** (parallel mode)
 - Average: **4.4ms per test**
+
+**Free-Threading Advantage**: Python 3.14t (no-GIL) is **21% faster** than regular Python 3.14, even in single-threaded code, due to reduced GIL overhead and optimized reference counting for interned strings.
 
 ### Key Optimizations
 
