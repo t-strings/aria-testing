@@ -8,7 +8,7 @@ aria-testing is built around three core systems:
 
 1. **Query System** - Factory-based query generation with four variants per query type
 2. **Role Mapping** - ARIA role to HTML element mapping with accessible name computation
-3. **Traversal Engine** - Iterative DOM tree traversal with caching
+3. **Traversal Engine** - Iterative DOM tree traversal
 
 ## Query System Design
 
@@ -265,68 +265,6 @@ def find_with_early_exit(
 - `get_by_*` - exits after finding 2 elements (to report error)
 - `query_by_*` - exits after finding 2 elements (to report error)
 - `get_all_by_*` and `query_all_by_*` - traverse full tree
-
-## Caching System
-
-### Two-Level Cache
-
-aria-testing uses two cache levels:
-
-**Level 1: Element List Cache**
-- Caches `get_all_elements()` results by container ID
-- Avoids re-traversing the same DOM tree
-- 99.8% hit rate in benchmarks
-
-**Level 2: Role Cache**
-- Caches computed roles by element ID
-- Avoids recomputing roles for same elements
-- 99.5% hit rate in benchmarks
-
-### Cache Implementation
-
-```python
-from functools import lru_cache
-
-@lru_cache(maxsize=128)
-def get_all_elements_cached(container: Container) -> list[Element]:
-    """Cached element traversal."""
-    return _get_all_elements_uncached(container)
-
-@lru_cache(maxsize=512)
-def compute_role_cached(element: Element) -> str | None:
-    """Cached role computation."""
-    return _compute_role_uncached(element)
-```
-
-### Cache Invalidation
-
-Caches are automatically cleared:
-- Between pytest test functions (via fixture)
-- When explicitly requested (`clear_caches()`)
-
-```python
-import pytest
-from aria_testing.cache import clear_caches
-
-@pytest.fixture(autouse=True)
-def clear_aria_testing_caches():
-    """Clear caches between tests."""
-    clear_caches()
-    yield
-    clear_caches()
-```
-
-### Cache Statistics
-
-Runtime cache statistics available for debugging:
-
-```python
-from aria_testing.cache import get_cache_stats
-
-stats = get_cache_stats()
-print(f"Element cache: {stats.element_list.hit_rate:.1%} hit rate")
-print(f"Role cache: {stats.role.hit_rate:.1%} hit rate")
-```
 
 ## Type System
 

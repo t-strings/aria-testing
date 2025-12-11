@@ -21,12 +21,6 @@ from .assertions import (
     GetByTestId,
     GetByText,
 )
-from .cache import (
-    CacheContext,
-    clear_all_caches,
-    get_cache_stats,
-    print_cache_stats,
-)
 from .errors import AriaTestingLibraryError, ElementNotFoundError, MultipleElementsError
 from .queries import (
     AriaRole,
@@ -109,11 +103,6 @@ __all__ = [
     "AriaTestingLibraryError",
     "ElementNotFoundError",
     "MultipleElementsError",
-    # Cache management
-    "CacheContext",
-    "clear_all_caches",
-    "get_cache_stats",
-    "print_cache_stats",
     # Type exports
     "AriaRole",
     "Container",

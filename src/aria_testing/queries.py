@@ -11,7 +11,6 @@ from typing import Callable, Literal
 
 from tdom import Element, Fragment, Node
 
-from aria_testing.cache import get_role_cache
 from aria_testing.errors import ElementNotFoundError, MultipleElementsError
 from aria_testing.utils import (
     find_elements_by_attribute,
@@ -294,8 +293,6 @@ _INPUT_TYPE_MAP = {
 def get_role_for_element(node: Node) -> str | None:
     """
     Get the ARIA role for a node (only Elements can have roles).
-
-    Uses caching to avoid redundant role computation for the same elements.
     """
     # Only Elements can have ARIA roles
     if not isinstance(node, Element):
@@ -303,29 +300,6 @@ def get_role_for_element(node: Node) -> str | None:
 
     element = node
 
-    # Check cache first
-    cache = get_role_cache()
-    if getattr(cache, "_enabled", True):
-        cached_role = cache.get(element)
-        if cached_role is not cache._NOT_CACHED:
-            return cached_role
-
-    # Cache miss - compute role
-    role = _compute_role(element)
-
-    # Store in cache
-    if getattr(cache, "_enabled", True):
-        cache.set(element, role)
-
-    return role
-
-
-def _compute_role(element: Element) -> str | None:
-    """
-    Compute the ARIA role for an element (internal, non-cached version).
-
-    This is separated from get_role_for_element to make caching logic clear.
-    """
     # Check explicit role
     if "role" in element.attrs:
         return element.attrs["role"]

@@ -16,9 +16,9 @@ they can give you."**
 
 - ✨ **Modern Python 3.14+** - Uses structural pattern matching, PEP 695 generics, and modern type hints
 - 🎯 **Accessibility-first** - Query by role, label text, and semantic attributes
-- ⚡ **High performance** - Optimized traversal with caching and early-exit strategies
+- ⚡ **High performance** - Optimized traversal with early-exit strategies
 - 🔒 **Type-safe** - Full type annotations with strict type checking
-- 🧪 **Well-tested** - 144 tests, 100% passing, comprehensive coverage
+- 🧪 **Well-tested** - 179 tests, 100% passing, comprehensive coverage
 
 ## Installation
 
@@ -170,53 +170,34 @@ Built with cutting-edge Python 3.14+ features:
 
 ## Performance
 
-aria-testing is highly optimized for speed with multiple performance strategies:
+aria-testing is optimized for speed with multiple performance strategies:
 
-### Optimization Techniques
+**Query Performance** (200-element DOM):
+- Average query time: **4.8μs** ⚡
+- Role queries: **3.6μs**
+- Text queries: **13.3μs**
+- Class/tag queries: **3.1μs**
 
-- **Two-level caching** - Element list and role computation caching
+**Test Suite**:
+- 179 tests complete in **0.78 seconds** (parallel mode)
+- Average: **4.4ms per test**
+
+### Key Optimizations
+
 - **Early-exit strategies** - Stops searching after finding matches
 - **Iterative traversal** - Non-recursive DOM traversal for large trees
 - **String interning** - Fast identity-based comparisons for common roles
-- **Set-based class matching** - O(1) instead of O(n) for class queries
+- **Set-based class matching** - O(1) class lookups
+- **Thread-safe** - Works with Python 3.14 free-threading & parallel test runners
 
-### Benchmark Results
-
-*Measured on December 10, 2024 - Apple M-series CPU, Python 3.14*
-
-**Test Suite Performance**:
-
-- 154 tests complete in **0.08 seconds** ⚡
-
-**Query Performance** (200-element DOM, 100 iterations per query):
-
-| Query Type    | Without Caching | With Caching | Speedup          |
-|---------------|-----------------|--------------|------------------|
-| Role queries  | 4.3μs           | 1.8μs        | **2.4x faster**  |
-| Text queries  | 13.6μs          | 11.2μs       | **1.2x faster**  |
-| Class queries | 3.2μs           | 0.7μs        | **4.3x faster**  |
-| Tag queries   | 3.5μs           | 3.1μs        | **1.1x faster**  |
-| **Average**   | **5.8μs**       | **3.7μs**    | **1.55x faster** |
-
-**Cache Efficiency**:
-
-- Element list cache: **99.8% hit rate**
-- Role cache: **99.5% hit rate**
+📊 **[See detailed benchmarks →](https://t-strings.github.io/aria-testing/benchmark.html)**
 
 *Run benchmarks yourself*:
 
 ```bash
-just benchmark        # General performance
-just benchmark-cache  # Caching comparison
+just benchmark        # Performance benchmark
+just profile-queries  # Detailed profiling
 ```
-
-### Performance Tips
-
-1. **Reuse containers** - Query the same DOM multiple times to benefit from caching
-2. **Use appropriate queries** - `query_all_*` gets full caching benefits
-3. **Let caching work** - Caches auto-clear between pytest tests
-
-See `CACHING_IMPLEMENTATION.md` for detailed performance analysis.
 
 ## Requirements
 

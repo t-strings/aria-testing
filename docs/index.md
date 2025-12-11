@@ -36,7 +36,7 @@ Complete API documentation:
 Deep dives for advanced users and contributors:
 
 - **[Architecture](architecture.md)** - System design, query factory pattern, role mapping
-- **[Performance](performance.md)** - Optimization strategies, benchmarks, caching details
+- **[Benchmarks](benchmark.md)** - Performance measurements, optimization strategies
 - **[Contributing](contributing.md)** - Development setup, code standards, how to contribute
 
 ## Quick Links
@@ -75,6 +75,6 @@ examples
 best-practices
 api
 architecture
-performance
+benchmark
 contributing
 ```

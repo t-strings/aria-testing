@@ -7,8 +7,6 @@ from typing import Callable
 
 from tdom import Element, Fragment, Node, Text
 
-from aria_testing.cache import get_element_list_cache
-
 
 def get_text_content(node: Node) -> str:
     """
@@ -188,8 +186,6 @@ def get_all_elements(
     """
     Get all Element nodes within the container.
 
-    Uses caching to avoid redundant traversals when max_results is None.
-
     Args:
         container: The container node to search within
         skip_root: If True and container is an Element, exclude the container itself
@@ -198,25 +194,6 @@ def get_all_elements(
     Returns:
         List of all elements in the container
     """
-    # Only use cache when getting all elements (max_results is None)
-    # Early-exit queries can't be cached since they return partial results
-    if max_results is None:
-        cache = get_element_list_cache()
-
-        # Check if caching is enabled (via CacheContext)
-        if getattr(cache, "_enabled", True):
-            cached = cache.get(container, skip_root)
-            if cached is not None:
-                return cached
-
-            # Cache miss - compute and store
-            elements = _traverse_elements(
-                container, skip_root=skip_root, max_results=max_results
-            )
-            cache.set(container, skip_root, elements)
-            return elements
-
-    # Caching disabled or early exit - compute directly
     return _traverse_elements(container, skip_root=skip_root, max_results=max_results)
 
 

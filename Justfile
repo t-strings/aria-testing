@@ -86,10 +86,6 @@ disable-pre-push:
 benchmark:
     uv run python -m aria_testing.profiling.benchmark
 
-# Run caching performance benchmark
-benchmark-cache:
-    uv run python -m aria_testing.profiling.benchmark_caching
-
 # Profile query operations
 profile-queries:
     uv run python -m aria_testing.profiling.profiler_queries
